@@ -28,6 +28,7 @@ import {
   Search,
   Music2,
   X,
+  Save,
 } from 'lucide-react';
 import { useSetlists } from '../hooks/useSetlists';
 import { useSongs } from '../hooks/useSongs';
@@ -171,12 +172,19 @@ export default function SetlistEditPage() {
 
   const [setlist, setSetlist] = useState<SetlistWithItems | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [items, setItems] = useState<SetlistItemWithSong[]>([]);
+  const [originalItems, setOriginalItems] = useState<SetlistItemWithSong[]>([]);
+  const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
 
   // 곡 추가 모달
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
+
+  // 변경사항 있는지 확인
+  const hasChanges = itemsToDelete.length > 0 ||
+    JSON.stringify(items) !== JSON.stringify(originalItems);
 
   // 드래그 센서
   const sensors = useSensors(
@@ -199,6 +207,8 @@ export default function SetlistEditPage() {
       if (data) {
         setSetlist(data);
         setItems(data.setlist_items);
+        setOriginalItems(JSON.parse(JSON.stringify(data.setlist_items)));
+        setItemsToDelete([]);
       } else {
         toast.error('콘티를 찾을 수 없습니다.');
         navigate('/setlists');
@@ -209,7 +219,7 @@ export default function SetlistEditPage() {
     loadSetlist();
   }, [id, fetchSetlistById, navigate]);
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id || !id) return;
 
@@ -222,63 +232,83 @@ export default function SetlistEditPage() {
     }));
 
     setItems(newItems);
-
-    try {
-      await reorderSetlistItems(
-        id,
-        newItems.map((item) => ({ id: item.id, position: item.position }))
-      );
-    } catch (error) {
-      toast.error('순서 변경 실패');
-      // 롤백
-      const data = await fetchSetlistById(id);
-      if (data) setItems(data.setlist_items);
-    }
   };
 
-  const handleKeyChange = async (itemId: string, key: string) => {
+  const handleKeyChange = (itemId: string, key: string) => {
     setItems((prev) =>
       prev.map((item) =>
         item.id === itemId ? { ...item, selected_key: key } : item
       )
     );
-
-    try {
-      await updateSetlistItem(itemId, { selected_key: key || undefined });
-    } catch (error) {
-      toast.error('키 변경 실패');
-    }
   };
 
-  const handleNoteChange = async (itemId: string, note: string) => {
+  const handleNoteChange = (itemId: string, note: string) => {
     setItems((prev) =>
       prev.map((item) => (item.id === itemId ? { ...item, note } : item))
     );
-
-    // 디바운스를 위해 setTimeout 사용
-    const timeout = setTimeout(async () => {
-      try {
-        await updateSetlistItem(itemId, { note: note || undefined });
-      } catch (error) {
-        console.error('메모 저장 실패:', error);
-      }
-    }, 500);
-
-    return () => clearTimeout(timeout);
   };
 
-  const handleRemoveItem = async (itemId: string) => {
-    if (!confirm('이 곡을 콘티에서 제거하시겠습니까?')) return;
+  const handleRemoveItem = (itemId: string) => {
+    // 삭제 예정 목록에 추가
+    setItemsToDelete((prev) => [...prev, itemId]);
+    // 화면에서 제거
+    setItems((prev) => {
+      const filtered = prev.filter((item) => item.id !== itemId);
+      return filtered.map((item, index) => ({ ...item, position: index + 1 }));
+    });
+    toast.success('곡이 삭제 예정되었습니다. 저장 시 적용됩니다.');
+  };
 
+  // 저장 버튼 클릭
+  const handleSave = async () => {
+    if (!id) return;
+
+    setSaving(true);
     try {
-      await removeItemFromSetlist(itemId);
-      setItems((prev) => {
-        const filtered = prev.filter((item) => item.id !== itemId);
-        return filtered.map((item, index) => ({ ...item, position: index + 1 }));
+      // 1. 삭제 예정 항목들 삭제
+      for (const itemId of itemsToDelete) {
+        await removeItemFromSetlist(itemId);
+      }
+
+      // 2. 변경된 항목들 업데이트 (키, 메모)
+      for (const item of items) {
+        const original = originalItems.find((o) => o.id === item.id);
+        if (original) {
+          const keyChanged = item.selected_key !== original.selected_key;
+          const noteChanged = item.note !== original.note;
+
+          if (keyChanged || noteChanged) {
+            await updateSetlistItem(item.id, {
+              selected_key: item.selected_key || undefined,
+              note: item.note || undefined,
+            });
+          }
+        }
+      }
+
+      // 3. 순서 변경 적용
+      const orderChanged = items.some((item) => {
+        const original = originalItems.find((o) => o.id === item.id);
+        return original && original.position !== item.position;
       });
-      toast.success('곡이 제거되었습니다.');
+
+      if (orderChanged) {
+        await reorderSetlistItems(
+          id,
+          items.map((item) => ({ id: item.id, position: item.position }))
+        );
+      }
+
+      // 원본 상태 업데이트
+      setOriginalItems(JSON.parse(JSON.stringify(items)));
+      setItemsToDelete([]);
+
+      toast.success('저장되었습니다.');
     } catch (error) {
-      toast.error('제거 실패');
+      toast.error('저장 실패');
+      console.error('저장 실패:', error);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -296,6 +326,7 @@ export default function SetlistEditPage() {
       const data = await fetchSetlistById(id);
       if (data) {
         setItems(data.setlist_items);
+        setOriginalItems(JSON.parse(JSON.stringify(data.setlist_items)));
       }
 
       toast.success(`"${song.title}"이(가) 추가되었습니다.`);
@@ -351,13 +382,24 @@ export default function SetlistEditPage() {
           </h1>
           <p className="text-sm text-gray-500">{setlist.service_type}</p>
         </div>
-        <Button
-          variant="secondary"
-          onClick={() => navigate(`/setlists/${id}/view`)}
-          icon={<Download className="w-4 h-4" />}
-        >
-          <span className="hidden sm:inline">PDF 내보내기</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => navigate(`/setlists/${id}/view`)}
+            icon={<Download className="w-4 h-4" />}
+          >
+            <span className="hidden sm:inline">PDF</span>
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            loading={saving}
+            disabled={!hasChanges}
+            icon={<Save className="w-4 h-4" />}
+          >
+            저장
+          </Button>
+        </div>
       </div>
 
       {/* 곡 추가 버튼 */}

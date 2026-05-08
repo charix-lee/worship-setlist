@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { FileText, ExternalLink, Trash2, Plus, Loader2 } from 'lucide-react';
+import { FileText, ExternalLink, Trash2, Plus } from 'lucide-react';
 import Modal from './Modal';
 import Button from './Button';
 import type { SongWithSheets } from '../types/database';
@@ -45,11 +45,16 @@ export default function SongModal({
 
   // 악보 업로드
   const [selectedKey, setSelectedKey] = useState('G');
-  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 새 곡 추가 시 임시 악보 파일 목록
+  // 추가할 악보 파일 목록
   const [pendingSheets, setPendingSheets] = useState<PendingSheet[]>([]);
+
+  // 기존 악보 목록 (로컬 상태로 관리하여 즉시 반영)
+  const [existingSheets, setExistingSheets] = useState(song?.song_sheets || []);
+
+  // 삭제할 악보 목록 (저장 시 실제 삭제)
+  const [sheetsToDelete, setSheetsToDelete] = useState<{ id: string; fileUrl: string }[]>([]);
 
   const isEditing = !!song;
 
@@ -62,7 +67,9 @@ export default function SongModal({
       setLyrics(song?.lyrics || '');
       setMemo(song?.memo || '');
       setPendingSheets([]);
+      setSheetsToDelete([]);
       setSelectedKey('G');
+      setExistingSheets(song?.song_sheets || []);
     }
   }, [isOpen, song]);
 
@@ -84,11 +91,23 @@ export default function SongModal({
         memo: memo.trim() || undefined,
       });
 
-      // 새 곡 추가 시 대기 중인 악보 파일들 업로드
-      if (!isEditing && pendingSheets.length > 0 && onAddSheet) {
+      // 삭제 예정 악보들 삭제
+      if (sheetsToDelete.length > 0 && onRemoveSheet) {
+        for (const sheet of sheetsToDelete) {
+          try {
+            await onRemoveSheet(sheet.id, sheet.fileUrl);
+          } catch (err) {
+            console.error('악보 삭제 실패:', err);
+          }
+        }
+      }
+
+      // 대기 중인 악보 파일들 업로드 (새 곡 추가 및 편집 모드 모두)
+      if (pendingSheets.length > 0 && onAddSheet) {
+        const songId = isEditing ? song!.id : savedSong.id;
         for (const sheet of pendingSheets) {
           try {
-            await onAddSheet(savedSong.id, sheet.file, sheet.musicKey, title.trim());
+            await onAddSheet(songId, sheet.file, sheet.musicKey, title.trim());
           } catch (err) {
             console.error('악보 업로드 실패:', err);
           }
@@ -104,7 +123,7 @@ export default function SongModal({
     }
   };
 
-  // 새 곡 추가 시 임시 파일 추가
+  // 악보 파일 추가 (저장 시 업로드)
   const handleAddPendingSheet = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -114,9 +133,16 @@ export default function SongModal({
       return;
     }
 
-    // 같은 키에 이미 파일이 있는지 확인
+    // 같은 키에 이미 파일이 있는지 확인 (대기 목록)
     if (pendingSheets.some((s) => s.musicKey === selectedKey)) {
       toast.error(`${selectedKey} 키 악보가 이미 추가되어 있습니다.`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // 편집 모드: 기존 악보와도 중복 체크
+    if (isEditing && existingSheets.some((s) => s.music_key === selectedKey)) {
+      toast.error(`${selectedKey} 키 악보가 이미 존재합니다.`);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -126,7 +152,7 @@ export default function SongModal({
       { id: `pending-${Date.now()}`, file, musicKey: selectedKey },
     ]);
 
-    toast.success(`${selectedKey} 키 악보가 추가되었습니다.`);
+    toast.success(`${selectedKey} 키 악보가 추가되었습니다. 저장 시 업로드됩니다.`);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -135,40 +161,13 @@ export default function SongModal({
     setPendingSheets((prev) => prev.filter((s) => s.id !== id));
   };
 
-  // 편집 모드에서 기존 악보 업로드
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !song || !onAddSheet) return;
-
-    if (!file.type.includes('pdf') && !file.type.includes('image')) {
-      toast.error('PDF 또는 이미지 파일만 업로드 가능합니다.');
-      return;
-    }
-
-    setUploading(true);
-    try {
-      await onAddSheet(song.id, file, selectedKey);
-      toast.success('악보가 업로드되었습니다.');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : '업로드 실패');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const handleRemoveSheet = async (sheetId: string, fileUrl: string) => {
-    if (!onRemoveSheet) return;
-    if (!confirm('이 악보를 삭제하시겠습니까?')) return;
-
-    try {
-      await onRemoveSheet(sheetId, fileUrl);
-      toast.success('악보가 삭제되었습니다.');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : '삭제 실패');
-    }
+  // 악보 삭제 예약 (저장 시 실제 삭제)
+  const handleRemoveSheet = (sheetId: string, fileUrl: string) => {
+    // 삭제 예정 목록에 추가
+    setSheetsToDelete((prev) => [...prev, { id: sheetId, fileUrl }]);
+    // 화면에서 즉시 제거
+    setExistingSheets((prev) => prev.filter((s) => s.id !== sheetId));
+    toast.success('악보가 삭제 예정되었습니다. 저장 시 적용됩니다.');
   };
 
   return (
@@ -250,9 +249,9 @@ export default function SongModal({
           <h3 className="text-sm font-medium text-gray-700 mb-3">악보 파일</h3>
 
           {/* 편집 모드: 기존 악보 목록 */}
-          {isEditing && song && song.song_sheets.length > 0 && (
+          {isEditing && existingSheets.length > 0 && (
             <div className="space-y-2 mb-4">
-              {song.song_sheets.map((sheet) => (
+              {existingSheets.map((sheet) => (
                 <div
                   key={sheet.id}
                   className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
@@ -284,8 +283,8 @@ export default function SongModal({
             </div>
           )}
 
-          {/* 새 곡 추가 모드: 대기 중인 악보 목록 */}
-          {!isEditing && pendingSheets.length > 0 && (
+          {/* 대기 중인 악보 목록 (저장 시 업로드) */}
+          {pendingSheets.length > 0 && (
             <div className="space-y-2 mb-4">
               {pendingSheets.map((sheet) => (
                 <div
@@ -328,30 +327,22 @@ export default function SongModal({
               ref={fileInputRef}
               type="file"
               accept=".pdf,image/*"
-              onChange={isEditing ? handleFileUpload : handleAddPendingSheet}
+              onChange={handleAddPendingSheet}
               className="hidden"
               id="sheet-upload"
             />
             <label
               htmlFor="sheet-upload"
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors ${
-                uploading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors"
             >
-              {uploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
+              <Plus className="w-4 h-4" />
               악보 파일 추가
             </label>
           </div>
 
-          {!isEditing && (
-            <p className="mt-2 text-xs text-gray-400">
-              여러 키의 악보를 추가할 수 있습니다. 곡 저장 시 함께 업로드됩니다.
-            </p>
-          )}
+          <p className="mt-2 text-xs text-gray-400">
+            여러 키의 악보를 추가할 수 있습니다. 저장 버튼을 누르면 업로드됩니다.
+          </p>
         </div>
 
         {/* 버튼 */}
