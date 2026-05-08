@@ -1,0 +1,501 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  ArrowLeft,
+  Plus,
+  GripVertical,
+  Trash2,
+  FileText,
+  Download,
+  Loader2,
+  Search,
+  Music2,
+  X,
+} from 'lucide-react';
+import { useSetlists } from '../hooks/useSetlists';
+import { useSongs } from '../hooks/useSongs';
+import Modal from '../components/Modal';
+import Button from '../components/Button';
+import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '../types/database';
+import { MUSIC_KEYS } from '../types/database';
+import toast from 'react-hot-toast';
+
+// 드래그 가능한 아이템 컴포넌트
+function SortableItem({
+  item,
+  onKeyChange,
+  onNoteChange,
+  onRemove,
+}: {
+  item: SetlistItemWithSong;
+  onKeyChange: (key: string) => void;
+  onNoteChange: (note: string) => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const availableKeys = item.song.song_sheets.map((s) => s.music_key);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-white rounded-xl border border-gray-200 p-4 ${
+        isDragging ? 'shadow-lg opacity-90' : ''
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        {/* 드래그 핸들 */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing touch-none"
+        >
+          <GripVertical className="w-5 h-5" />
+        </button>
+
+        {/* 순서 번호 */}
+        <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <span className="text-sm font-semibold text-primary-700">
+            {item.position}
+          </span>
+        </div>
+
+        {/* 곡 정보 */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-gray-900 truncate">{item.song.title}</h3>
+          <p className="text-sm text-gray-500 truncate">
+            {item.song.artist || '아티스트 미입력'}
+          </p>
+
+          {/* 키 선택 및 악보 보기 */}
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <select
+              value={item.selected_key || ''}
+              onChange={(e) => onKeyChange(e.target.value)}
+              className="px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">키 선택</option>
+              {availableKeys.length > 0 ? (
+                availableKeys.map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))
+              ) : (
+                MUSIC_KEYS.slice(0, 12).map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))
+              )}
+            </select>
+
+            {/* 악보 링크 */}
+            {item.selected_key && (
+              <>
+                {item.song.song_sheets
+                  .filter((s) => s.music_key === item.selected_key)
+                  .map((sheet) => (
+                    <a
+                      key={sheet.id}
+                      href={sheet.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-2 py-1 bg-primary-50 text-primary-600 text-sm rounded-lg hover:bg-primary-100 transition-colors"
+                    >
+                      <FileText className="w-4 h-4" />
+                      악보 보기
+                    </a>
+                  ))}
+              </>
+            )}
+          </div>
+
+          {/* 메모 입력 */}
+          <input
+            type="text"
+            value={item.note || ''}
+            onChange={(e) => onNoteChange(e.target.value)}
+            placeholder="곡 메모 (예: 인트로 2번 반복)"
+            className="mt-2 w-full px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          />
+        </div>
+
+        {/* 삭제 버튼 */}
+        <button
+          onClick={onRemove}
+          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+        >
+          <Trash2 className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function SetlistEditPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const {
+    fetchSetlistById,
+    updateSetlistItem,
+    removeItemFromSetlist,
+    addItemToSetlist,
+    reorderSetlistItems,
+  } = useSetlists();
+  const { songs, fetchSongs } = useSongs();
+
+  const [setlist, setSetlist] = useState<SetlistWithItems | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<SetlistItemWithSong[]>([]);
+
+  // 곡 추가 모달
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [adding, setAdding] = useState<string | null>(null);
+
+  // 드래그 센서
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  useEffect(() => {
+    if (!id) return;
+
+    const loadSetlist = async () => {
+      setLoading(true);
+      const data = await fetchSetlistById(id);
+      if (data) {
+        setSetlist(data);
+        setItems(data.setlist_items);
+      } else {
+        toast.error('콘티를 찾을 수 없습니다.');
+        navigate('/setlists');
+      }
+      setLoading(false);
+    };
+
+    loadSetlist();
+  }, [id, fetchSetlistById, navigate]);
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !id) return;
+
+    const oldIndex = items.findIndex((item) => item.id === active.id);
+    const newIndex = items.findIndex((item) => item.id === over.id);
+
+    const newItems = arrayMove(items, oldIndex, newIndex).map((item, index) => ({
+      ...item,
+      position: index + 1,
+    }));
+
+    setItems(newItems);
+
+    try {
+      await reorderSetlistItems(
+        id,
+        newItems.map((item) => ({ id: item.id, position: item.position }))
+      );
+    } catch (error) {
+      toast.error('순서 변경 실패');
+      // 롤백
+      const data = await fetchSetlistById(id);
+      if (data) setItems(data.setlist_items);
+    }
+  };
+
+  const handleKeyChange = async (itemId: string, key: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, selected_key: key } : item
+      )
+    );
+
+    try {
+      await updateSetlistItem(itemId, { selected_key: key || undefined });
+    } catch (error) {
+      toast.error('키 변경 실패');
+    }
+  };
+
+  const handleNoteChange = async (itemId: string, note: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, note } : item))
+    );
+
+    // 디바운스를 위해 setTimeout 사용
+    const timeout = setTimeout(async () => {
+      try {
+        await updateSetlistItem(itemId, { note: note || undefined });
+      } catch (error) {
+        console.error('메모 저장 실패:', error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeout);
+  };
+
+  const handleRemoveItem = async (itemId: string) => {
+    if (!confirm('이 곡을 콘티에서 제거하시겠습니까?')) return;
+
+    try {
+      await removeItemFromSetlist(itemId);
+      setItems((prev) => {
+        const filtered = prev.filter((item) => item.id !== itemId);
+        return filtered.map((item, index) => ({ ...item, position: index + 1 }));
+      });
+      toast.success('곡이 제거되었습니다.');
+    } catch (error) {
+      toast.error('제거 실패');
+    }
+  };
+
+  const handleAddSong = async (song: SongWithSheets) => {
+    if (!id) return;
+    setAdding(song.id);
+
+    try {
+      const position = items.length + 1;
+      const defaultKey = song.song_sheets[0]?.music_key;
+
+      await addItemToSetlist(id, song.id, position, defaultKey);
+
+      // 콘티 다시 로드
+      const data = await fetchSetlistById(id);
+      if (data) {
+        setItems(data.setlist_items);
+      }
+
+      toast.success(`"${song.title}"이(가) 추가되었습니다.`);
+      setAddModalOpen(false);
+      setSearchQuery('');
+    } catch (error) {
+      toast.error('추가 실패');
+    } finally {
+      setAdding(null);
+    }
+  };
+
+  const filteredSongs = songs.filter((song) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      song.title.toLowerCase().includes(query) ||
+      song.artist?.toLowerCase().includes(query)
+    );
+  });
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} (${days[date.getDay()]})`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!setlist) {
+    return null;
+  }
+
+  return (
+    <div className="p-4 lg:p-6 max-w-3xl mx-auto">
+      {/* 헤더 */}
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          onClick={() => navigate('/setlists')}
+          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-gray-900">
+            {formatDate(setlist.date)}
+          </h1>
+          <p className="text-sm text-gray-500">{setlist.service_type}</p>
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => navigate(`/setlists/${id}/view`)}
+          icon={<Download className="w-4 h-4" />}
+        >
+          <span className="hidden sm:inline">PDF 내보내기</span>
+        </Button>
+      </div>
+
+      {/* 곡 추가 버튼 */}
+      <button
+        onClick={() => {
+          fetchSongs();
+          setAddModalOpen(true);
+        }}
+        className="w-full mb-4 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-primary-400 hover:text-primary-600 transition-colors flex items-center justify-center gap-2"
+      >
+        <Plus className="w-5 h-5" />
+        곡 추가하기
+      </button>
+
+      {/* 곡 목록 (드래그앤드롭) */}
+      {items.length === 0 ? (
+        <div className="text-center py-12">
+          <Music2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">아직 곡이 없습니다.</p>
+          <p className="text-sm text-gray-400 mt-1">
+            위 버튼을 눌러 곡을 추가해주세요.
+          </p>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={items} strategy={verticalListSortingStrategy}>
+            <div className="space-y-3">
+              {items.map((item) => (
+                <SortableItem
+                  key={item.id}
+                  item={item}
+                  onKeyChange={(key) => handleKeyChange(item.id, key)}
+                  onNoteChange={(note) => handleNoteChange(item.id, note)}
+                  onRemove={() => handleRemoveItem(item.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
+
+      {/* 곡 추가 모달 */}
+      <Modal
+        isOpen={addModalOpen}
+        onClose={() => {
+          setAddModalOpen(false);
+          setSearchQuery('');
+        }}
+        title="곡 추가"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* 검색 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="곡명 또는 아티스트 검색..."
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              autoFocus
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* 곡 목록 */}
+          <div className="max-h-96 overflow-y-auto space-y-2">
+            {filteredSongs.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                {searchQuery ? '검색 결과가 없습니다.' : '등록된 곡이 없습니다.'}
+              </p>
+            ) : (
+              filteredSongs.map((song) => {
+                const isAlreadyAdded = items.some((item) => item.song_id === song.id);
+                return (
+                  <button
+                    key={song.id}
+                    onClick={() => !isAlreadyAdded && handleAddSong(song)}
+                    disabled={isAlreadyAdded || adding === song.id}
+                    className={`w-full text-left p-3 rounded-lg border transition-colors flex items-center gap-3 ${
+                      isAlreadyAdded
+                        ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50'
+                    }`}
+                  >
+                    <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Music2 className="w-5 h-5 text-primary-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 truncate">
+                        {song.title}
+                      </h4>
+                      <p className="text-sm text-gray-500 truncate">
+                        {song.artist || '아티스트 미입력'}
+                      </p>
+                    </div>
+                    {song.song_sheets.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        {song.song_sheets.slice(0, 3).map((sheet) => (
+                          <span
+                            key={sheet.id}
+                            className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
+                          >
+                            {sheet.music_key}
+                          </span>
+                        ))}
+                        {song.song_sheets.length > 3 && (
+                          <span className="text-xs text-gray-400">
+                            +{song.song_sheets.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {adding === song.id && (
+                      <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
+                    )}
+                    {isAlreadyAdded && (
+                      <span className="text-xs text-gray-400">추가됨</span>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}

@@ -1,0 +1,491 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Download,
+  FileText,
+  Loader2,
+  Music2,
+  Edit2,
+  ExternalLink,
+  Type,
+  Copy,
+  Check,
+  Pencil,
+  Eye,
+} from 'lucide-react';
+import { useSetlists } from '../hooks/useSetlists';
+import Button from '../components/Button';
+import DrawingCanvas from '../components/DrawingCanvas';
+import type { SetlistWithItems, SetlistItemWithSong } from '../types/database';
+import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+
+export default function SetlistViewPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { fetchSetlistById, updateSetlistItem } = useSetlists();
+
+  const [setlist, setSetlist] = useState<SetlistWithItems | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [viewMode, setViewMode] = useState<'sheet' | 'lyrics'>('sheet');
+  const [drawingMode, setDrawingMode] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyLyrics = async (item: SetlistItemWithSong) => {
+    if (!item.song.lyrics) return;
+    try {
+      await navigator.clipboard.writeText(item.song.lyrics);
+      setCopiedId(item.id);
+      toast.success('가사가 복사되었습니다!');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast.error('복사 실패');
+    }
+  };
+
+  const copyAllLyrics = async () => {
+    if (!setlist) return;
+    const allLyrics = setlist.setlist_items
+      .filter(item => item.song.lyrics)
+      .map((item, idx) => `[${idx + 1}. ${item.song.title}]\n${item.song.lyrics}`)
+      .join('\n\n---\n\n');
+
+    if (!allLyrics) {
+      toast.error('복사할 가사가 없습니다.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(allLyrics);
+      toast.success('전체 가사가 복사되었습니다!');
+    } catch {
+      toast.error('복사 실패');
+    }
+  };
+
+  useEffect(() => {
+    if (!id) return;
+
+    const loadSetlist = async () => {
+      setLoading(true);
+      const data = await fetchSetlistById(id);
+      if (data) {
+        setSetlist(data);
+      } else {
+        toast.error('콘티를 찾을 수 없습니다.');
+        navigate('/setlists');
+      }
+      setLoading(false);
+    };
+
+    loadSetlist();
+  }, [id, fetchSetlistById, navigate]);
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${days[date.getDay()]})`;
+  };
+
+  const handleSaveAnnotations = async (itemId: string, annotations: string) => {
+    try {
+      await updateSetlistItem(itemId, { annotations });
+      // Update local state
+      if (setlist) {
+        setSetlist({
+          ...setlist,
+          setlist_items: setlist.setlist_items.map(item =>
+            item.id === itemId ? { ...item, annotations } : item
+          ),
+        });
+      }
+      toast.success('그림이 저장되었습니다.');
+    } catch (error) {
+      console.error('Failed to save annotations:', error);
+      toast.error('그림 저장 실패');
+      throw error; // Re-throw to let DrawingCanvas know it failed
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!setlist) return;
+
+    setExporting(true);
+    try {
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const imgWidth = pageWidth - margin * 2;
+
+      let isFirstPage = true;
+
+      // 각 악보 이미지를 PDF에 추가
+      for (const item of setlist.setlist_items) {
+        const sheet = item.song.song_sheets.find(
+          (s) => s.music_key === item.selected_key
+        );
+
+        if (!sheet?.file_url) continue;
+
+        // PDF 파일은 건너뛰기
+        if (sheet.file_url.toLowerCase().endsWith('.pdf')) continue;
+
+        // 이미지 로드
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const image = new Image();
+          image.crossOrigin = 'anonymous';
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = sheet.file_url;
+        });
+
+        // 이미지 비율 계산
+        const imgHeight = (img.height * imgWidth) / img.width;
+
+        // 새 페이지 추가 (첫 페이지가 아닌 경우)
+        if (!isFirstPage) {
+          pdf.addPage();
+        }
+        isFirstPage = false;
+
+        // 이미지가 페이지보다 긴 경우 처리
+        if (imgHeight <= pageHeight - margin * 2) {
+          // 이미지가 한 페이지에 들어가는 경우
+          pdf.addImage(img, 'PNG', margin, margin, imgWidth, imgHeight);
+        } else {
+          // 이미지가 여러 페이지에 걸치는 경우
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+
+            const pageContentHeight = pageHeight - margin * 2;
+            const sourcePageHeight = (pageContentHeight / imgWidth) * img.width;
+            let yOffset = 0;
+
+            while (yOffset < img.height) {
+              if (yOffset > 0) {
+                pdf.addPage();
+              }
+
+              const remainingHeight = img.height - yOffset;
+              const sliceHeight = Math.min(sourcePageHeight, remainingHeight);
+              const destHeight = (sliceHeight / img.width) * imgWidth;
+
+              // 해당 부분만 잘라서 캔버스에 그리기
+              const sliceCanvas = document.createElement('canvas');
+              sliceCanvas.width = img.width;
+              sliceCanvas.height = sliceHeight;
+              const sliceCtx = sliceCanvas.getContext('2d');
+              if (sliceCtx) {
+                sliceCtx.drawImage(
+                  img,
+                  0, yOffset, img.width, sliceHeight,
+                  0, 0, img.width, sliceHeight
+                );
+                const sliceData = sliceCanvas.toDataURL('image/png');
+                pdf.addImage(sliceData, 'PNG', margin, margin, imgWidth, destHeight);
+              }
+
+              yOffset += sourcePageHeight;
+            }
+          }
+        }
+      }
+
+      // 파일명: YYMMDD_서비스타입.pdf
+      const date = new Date(setlist.date);
+      const yy = String(date.getFullYear()).slice(-2);
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      const fileName = `${yy}${mm}${dd}_${setlist.service_type}.pdf`;
+
+      pdf.save(fileName);
+      toast.success('PDF가 저장되었습니다.');
+    } catch (error) {
+      console.error('PDF 생성 실패:', error);
+      toast.error('PDF 생성에 실패했습니다.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!setlist) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* 헤더 (인쇄 시 숨김) */}
+      <div className="sticky top-0 bg-white border-b border-gray-200 z-10 print:hidden">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={() => navigate('/setlists')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="hidden sm:inline">목록으로</span>
+          </button>
+          <div className="flex items-center gap-2">
+            {/* 뷰 모드 전환 */}
+            <div className="flex bg-gray-100 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('sheet')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  viewMode === 'sheet'
+                    ? 'bg-white text-primary-600 shadow-sm'
+                    : 'text-gray-600'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('lyrics')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  viewMode === 'lyrics'
+                    ? 'bg-white text-primary-600 shadow-sm'
+                    : 'text-gray-600'
+                }`}
+              >
+                <Type className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 그리기 모드 토글 (악보 모드에서만) */}
+            {viewMode === 'sheet' && (
+              <button
+                onClick={() => setDrawingMode(!drawingMode)}
+                className={`p-2 rounded-lg transition-colors ${
+                  drawingMode
+                    ? 'bg-primary-100 text-primary-600'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                title={drawingMode ? '보기 모드' : '그리기 모드'}
+              >
+                {drawingMode ? <Eye className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
+              </button>
+            )}
+
+            <button
+              onClick={() => navigate(`/setlists/${id}`)}
+              className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
+              title="편집"
+            >
+              <Edit2 className="w-5 h-5" />
+            </button>
+            {viewMode === 'sheet' ? (
+              <Button
+                onClick={handleExportPDF}
+                loading={exporting}
+                icon={!exporting ? <Download className="w-4 h-4" /> : undefined}
+              >
+                PDF
+              </Button>
+            ) : (
+              <Button
+                onClick={copyAllLyrics}
+                icon={<Copy className="w-4 h-4" />}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                전체 복사
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 그리기 모드 안내 */}
+      {drawingMode && viewMode === 'sheet' && (
+        <div className="bg-primary-50 border-b border-primary-200 print:hidden">
+          <div className="max-w-3xl mx-auto px-4 py-2 text-sm text-primary-700 text-center">
+            ✏️ 그리기 모드 - 악보 위에 그림을 그릴 수 있습니다. 자동 저장됩니다.
+          </div>
+        </div>
+      )}
+
+      {/* 콘티 내용 */}
+      <div className="max-w-3xl mx-auto p-4 lg:p-6">
+        <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8">
+          {/* 콘티 헤더 */}
+          <div className="text-center mb-8 pb-6 border-b border-gray-200">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {formatDate(setlist.date)}
+            </h1>
+            <p className="text-lg text-primary-600 font-medium">
+              {setlist.service_type}
+            </p>
+            {setlist.description && (
+              <p className="mt-2 text-gray-500">{setlist.description}</p>
+            )}
+          </div>
+
+          {/* 곡 목록 */}
+          {setlist.setlist_items.length === 0 ? (
+            <div className="text-center py-12">
+              <Music2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">등록된 곡이 없습니다.</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {setlist.setlist_items.map((item) => {
+                const sheet = item.song.song_sheets.find(
+                  (s) => s.music_key === item.selected_key
+                );
+                const isPdf = sheet?.file_url?.toLowerCase().endsWith('.pdf');
+                const isImage = sheet && !isPdf;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="border-b border-gray-200 pb-8 last:border-b-0 last:pb-0"
+                  >
+                    {/* 곡 헤더 */}
+                    <div className="flex items-start gap-4 mb-4">
+                      {/* 순서 번호 */}
+                      <div className="w-10 h-10 bg-primary-600 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                        {item.position}
+                      </div>
+
+                      {/* 곡 정보 */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h3 className="font-semibold text-gray-900 text-lg">
+                              {item.song.title}
+                            </h3>
+                            <p className="text-gray-500">
+                              {item.song.artist || ''}
+                            </p>
+                          </div>
+                          {item.selected_key && (
+                            <span className="px-3 py-1 bg-primary-100 text-primary-700 font-bold rounded-lg text-lg flex-shrink-0">
+                              {item.selected_key}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 메모 */}
+                        {item.note && (
+                          <p className="mt-2 text-sm text-gray-600 bg-yellow-50 px-3 py-2 rounded-lg inline-block">
+                            {item.note}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 악보 모드 - 악보 직접 표시 */}
+                    {viewMode === 'sheet' && (
+                      <div className="ml-14">
+                        {sheet ? (
+                          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            {isPdf ? (
+                              // PDF는 그리기 불가능, iframe으로 표시
+                              <iframe
+                                src={sheet.file_url}
+                                className="w-full h-[600px]"
+                                title={`${item.song.title} 악보`}
+                              />
+                            ) : isImage ? (
+                              // 이미지는 DrawingCanvas로 표시
+                              <DrawingCanvas
+                                imageUrl={sheet.file_url}
+                                annotations={item.annotations || undefined}
+                                onSave={(annotations) => handleSaveAnnotations(item.id, annotations)}
+                                readOnly={!drawingMode}
+                              />
+                            ) : null}
+                            <a
+                              href={sheet.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-2 py-2 text-sm text-primary-600 hover:bg-primary-50 transition-colors print:hidden"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              새 탭에서 열기
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-50 rounded-lg p-8 text-center">
+                            <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                            <p className="text-sm text-gray-400">
+                              {item.selected_key ? '해당 키의 악보가 없습니다' : '선택된 키가 없습니다'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 가사 모드 */}
+                    {viewMode === 'lyrics' && (
+                      <div className="ml-14">
+                        {item.song.lyrics ? (
+                          <>
+                            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-2">
+                              <pre className="whitespace-pre-wrap font-sans text-gray-800 text-sm leading-relaxed">
+                                {item.song.lyrics}
+                              </pre>
+                            </div>
+                            <button
+                              onClick={() => copyLyrics(item)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors print:hidden ${
+                                copiedId === item.id
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {copiedId === item.id ? (
+                                <>
+                                  <Check className="w-4 h-4" />
+                                  복사됨
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-4 h-4" />
+                                  가사 복사
+                                </>
+                              )}
+                            </button>
+                          </>
+                        ) : (
+                          <div className="bg-gray-50 rounded-lg p-8 text-center">
+                            <Type className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                            <p className="text-sm text-gray-400">
+                              등록된 가사가 없습니다
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 푸터 */}
+          <div className="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-400">
+            찬양팀 콘티 · {new Date().toLocaleDateString()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
