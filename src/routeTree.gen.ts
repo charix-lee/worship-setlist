@@ -10,25 +10,27 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
-import { Route as SongsIndexRouteImport } from './routes/songs/index'
-import { Route as SetlistsIndexRouteImport } from './routes/setlists/index'
+import { Route as ScheduleIndexRouteImport } from './routes/schedule/index'
+import { Route as MypageIndexRouteImport } from './routes/mypage/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
-import { Route as SetlistsIdRouteImport } from './routes/setlists/$id'
-import { Route as SongsIdViewRouteImport } from './routes/songs/$id.view'
-import { Route as SetlistsIdViewRouteImport } from './routes/setlists/$id.view'
+import { Route as WorshipSongsIndexRouteImport } from './routes/worship/songs/index'
+import { Route as WorshipSetlistsIndexRouteImport } from './routes/worship/setlists/index'
+import { Route as WorshipSetlistsIdRouteImport } from './routes/worship/setlists/$id'
+import { Route as WorshipSongsIdViewRouteImport } from './routes/worship/songs/$id.view'
+import { Route as WorshipSetlistsIdViewRouteImport } from './routes/worship/setlists/$id.view'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SongsIndexRoute = SongsIndexRouteImport.update({
-  id: '/songs/',
-  path: '/songs/',
+const ScheduleIndexRoute = ScheduleIndexRouteImport.update({
+  id: '/schedule/',
+  path: '/schedule/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SetlistsIndexRoute = SetlistsIndexRouteImport.update({
-  id: '/setlists/',
-  path: '/setlists/',
+const MypageIndexRoute = MypageIndexRouteImport.update({
+  id: '/mypage/',
+  path: '/mypage/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginIndexRoute = LoginIndexRouteImport.update({
@@ -36,87 +38,111 @@ const LoginIndexRoute = LoginIndexRouteImport.update({
   path: '/login/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SetlistsIdRoute = SetlistsIdRouteImport.update({
-  id: '/setlists/$id',
-  path: '/setlists/$id',
+const WorshipSongsIndexRoute = WorshipSongsIndexRouteImport.update({
+  id: '/worship/songs/',
+  path: '/worship/songs/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SongsIdViewRoute = SongsIdViewRouteImport.update({
-  id: '/songs/$id/view',
-  path: '/songs/$id/view',
+const WorshipSetlistsIndexRoute = WorshipSetlistsIndexRouteImport.update({
+  id: '/worship/setlists/',
+  path: '/worship/setlists/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SetlistsIdViewRoute = SetlistsIdViewRouteImport.update({
+const WorshipSetlistsIdRoute = WorshipSetlistsIdRouteImport.update({
+  id: '/worship/setlists/$id',
+  path: '/worship/setlists/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorshipSongsIdViewRoute = WorshipSongsIdViewRouteImport.update({
+  id: '/worship/songs/$id/view',
+  path: '/worship/songs/$id/view',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorshipSetlistsIdViewRoute = WorshipSetlistsIdViewRouteImport.update({
   id: '/view',
   path: '/view',
-  getParentRoute: () => SetlistsIdRoute,
+  getParentRoute: () => WorshipSetlistsIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutRoute
-  '/setlists/$id': typeof SetlistsIdRouteWithChildren
   '/login/': typeof LoginIndexRoute
-  '/setlists/': typeof SetlistsIndexRoute
-  '/songs/': typeof SongsIndexRoute
-  '/setlists/$id/view': typeof SetlistsIdViewRoute
-  '/songs/$id/view': typeof SongsIdViewRoute
+  '/mypage/': typeof MypageIndexRoute
+  '/schedule/': typeof ScheduleIndexRoute
+  '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
+  '/worship/setlists/': typeof WorshipSetlistsIndexRoute
+  '/worship/songs/': typeof WorshipSongsIndexRoute
+  '/worship/setlists/$id/view': typeof WorshipSetlistsIdViewRoute
+  '/worship/songs/$id/view': typeof WorshipSongsIdViewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof LayoutRoute
-  '/setlists/$id': typeof SetlistsIdRouteWithChildren
   '/login': typeof LoginIndexRoute
-  '/setlists': typeof SetlistsIndexRoute
-  '/songs': typeof SongsIndexRoute
-  '/setlists/$id/view': typeof SetlistsIdViewRoute
-  '/songs/$id/view': typeof SongsIdViewRoute
+  '/mypage': typeof MypageIndexRoute
+  '/schedule': typeof ScheduleIndexRoute
+  '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
+  '/worship/setlists': typeof WorshipSetlistsIndexRoute
+  '/worship/songs': typeof WorshipSongsIndexRoute
+  '/worship/setlists/$id/view': typeof WorshipSetlistsIdViewRoute
+  '/worship/songs/$id/view': typeof WorshipSongsIdViewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRoute
-  '/setlists/$id': typeof SetlistsIdRouteWithChildren
   '/login/': typeof LoginIndexRoute
-  '/setlists/': typeof SetlistsIndexRoute
-  '/songs/': typeof SongsIndexRoute
-  '/setlists/$id/view': typeof SetlistsIdViewRoute
-  '/songs/$id/view': typeof SongsIdViewRoute
+  '/mypage/': typeof MypageIndexRoute
+  '/schedule/': typeof ScheduleIndexRoute
+  '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
+  '/worship/setlists/': typeof WorshipSetlistsIndexRoute
+  '/worship/songs/': typeof WorshipSongsIndexRoute
+  '/worship/setlists/$id/view': typeof WorshipSetlistsIdViewRoute
+  '/worship/songs/$id/view': typeof WorshipSongsIdViewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/setlists/$id'
     | '/login/'
-    | '/setlists/'
-    | '/songs/'
-    | '/setlists/$id/view'
-    | '/songs/$id/view'
+    | '/mypage/'
+    | '/schedule/'
+    | '/worship/setlists/$id'
+    | '/worship/setlists/'
+    | '/worship/songs/'
+    | '/worship/setlists/$id/view'
+    | '/worship/songs/$id/view'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/setlists/$id'
     | '/login'
-    | '/setlists'
-    | '/songs'
-    | '/setlists/$id/view'
-    | '/songs/$id/view'
+    | '/mypage'
+    | '/schedule'
+    | '/worship/setlists/$id'
+    | '/worship/setlists'
+    | '/worship/songs'
+    | '/worship/setlists/$id/view'
+    | '/worship/songs/$id/view'
   id:
     | '__root__'
     | '/_layout'
-    | '/setlists/$id'
     | '/login/'
-    | '/setlists/'
-    | '/songs/'
-    | '/setlists/$id/view'
-    | '/songs/$id/view'
+    | '/mypage/'
+    | '/schedule/'
+    | '/worship/setlists/$id'
+    | '/worship/setlists/'
+    | '/worship/songs/'
+    | '/worship/setlists/$id/view'
+    | '/worship/songs/$id/view'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRoute
-  SetlistsIdRoute: typeof SetlistsIdRouteWithChildren
   LoginIndexRoute: typeof LoginIndexRoute
-  SetlistsIndexRoute: typeof SetlistsIndexRoute
-  SongsIndexRoute: typeof SongsIndexRoute
-  SongsIdViewRoute: typeof SongsIdViewRoute
+  MypageIndexRoute: typeof MypageIndexRoute
+  ScheduleIndexRoute: typeof ScheduleIndexRoute
+  WorshipSetlistsIdRoute: typeof WorshipSetlistsIdRouteWithChildren
+  WorshipSetlistsIndexRoute: typeof WorshipSetlistsIndexRoute
+  WorshipSongsIndexRoute: typeof WorshipSongsIndexRoute
+  WorshipSongsIdViewRoute: typeof WorshipSongsIdViewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -128,18 +154,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/songs/': {
-      id: '/songs/'
-      path: '/songs'
-      fullPath: '/songs/'
-      preLoaderRoute: typeof SongsIndexRouteImport
+    '/schedule/': {
+      id: '/schedule/'
+      path: '/schedule'
+      fullPath: '/schedule/'
+      preLoaderRoute: typeof ScheduleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/setlists/': {
-      id: '/setlists/'
-      path: '/setlists'
-      fullPath: '/setlists/'
-      preLoaderRoute: typeof SetlistsIndexRouteImport
+    '/mypage/': {
+      id: '/mypage/'
+      path: '/mypage'
+      fullPath: '/mypage/'
+      preLoaderRoute: typeof MypageIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login/': {
@@ -149,49 +175,64 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/setlists/$id': {
-      id: '/setlists/$id'
-      path: '/setlists/$id'
-      fullPath: '/setlists/$id'
-      preLoaderRoute: typeof SetlistsIdRouteImport
+    '/worship/songs/': {
+      id: '/worship/songs/'
+      path: '/worship/songs'
+      fullPath: '/worship/songs/'
+      preLoaderRoute: typeof WorshipSongsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/songs/$id/view': {
-      id: '/songs/$id/view'
-      path: '/songs/$id/view'
-      fullPath: '/songs/$id/view'
-      preLoaderRoute: typeof SongsIdViewRouteImport
+    '/worship/setlists/': {
+      id: '/worship/setlists/'
+      path: '/worship/setlists'
+      fullPath: '/worship/setlists/'
+      preLoaderRoute: typeof WorshipSetlistsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/setlists/$id/view': {
-      id: '/setlists/$id/view'
+    '/worship/setlists/$id': {
+      id: '/worship/setlists/$id'
+      path: '/worship/setlists/$id'
+      fullPath: '/worship/setlists/$id'
+      preLoaderRoute: typeof WorshipSetlistsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/worship/songs/$id/view': {
+      id: '/worship/songs/$id/view'
+      path: '/worship/songs/$id/view'
+      fullPath: '/worship/songs/$id/view'
+      preLoaderRoute: typeof WorshipSongsIdViewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/worship/setlists/$id/view': {
+      id: '/worship/setlists/$id/view'
       path: '/view'
-      fullPath: '/setlists/$id/view'
-      preLoaderRoute: typeof SetlistsIdViewRouteImport
-      parentRoute: typeof SetlistsIdRoute
+      fullPath: '/worship/setlists/$id/view'
+      preLoaderRoute: typeof WorshipSetlistsIdViewRouteImport
+      parentRoute: typeof WorshipSetlistsIdRoute
     }
   }
 }
 
-interface SetlistsIdRouteChildren {
-  SetlistsIdViewRoute: typeof SetlistsIdViewRoute
+interface WorshipSetlistsIdRouteChildren {
+  WorshipSetlistsIdViewRoute: typeof WorshipSetlistsIdViewRoute
 }
 
-const SetlistsIdRouteChildren: SetlistsIdRouteChildren = {
-  SetlistsIdViewRoute: SetlistsIdViewRoute,
+const WorshipSetlistsIdRouteChildren: WorshipSetlistsIdRouteChildren = {
+  WorshipSetlistsIdViewRoute: WorshipSetlistsIdViewRoute,
 }
 
-const SetlistsIdRouteWithChildren = SetlistsIdRoute._addFileChildren(
-  SetlistsIdRouteChildren,
-)
+const WorshipSetlistsIdRouteWithChildren =
+  WorshipSetlistsIdRoute._addFileChildren(WorshipSetlistsIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRoute,
-  SetlistsIdRoute: SetlistsIdRouteWithChildren,
   LoginIndexRoute: LoginIndexRoute,
-  SetlistsIndexRoute: SetlistsIndexRoute,
-  SongsIndexRoute: SongsIndexRoute,
-  SongsIdViewRoute: SongsIdViewRoute,
+  MypageIndexRoute: MypageIndexRoute,
+  ScheduleIndexRoute: ScheduleIndexRoute,
+  WorshipSetlistsIdRoute: WorshipSetlistsIdRouteWithChildren,
+  WorshipSetlistsIndexRoute: WorshipSetlistsIndexRoute,
+  WorshipSongsIndexRoute: WorshipSongsIndexRoute,
+  WorshipSongsIdViewRoute: WorshipSongsIdViewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

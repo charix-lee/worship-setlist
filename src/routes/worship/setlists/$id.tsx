@@ -30,15 +30,15 @@ import {
   X,
   Save,
 } from 'lucide-react';
-import { useSetlists } from '../../hooks/useSetlists';
-import { useSongs } from '../../hooks/useSongs';
-import Modal from '../../components/Modal';
-import Button from '../../components/Button';
-import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '../../types/database';
-import { MUSIC_KEYS } from '../../types/database';
+import { useSetlists } from '@/hooks/useSetlists';
+import { useSongs } from '@/hooks/useSongs';
+import Modal from '@/components/Modal';
+import Button from '@/components/Button';
+import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '@/types/database';
+import { MUSIC_KEYS } from '@/types/database';
 import toast from 'react-hot-toast';
 
-export const Route = createFileRoute('/setlists/$id')({
+export const Route = createFileRoute('/worship/setlists/$id')({
   component: SetlistEditPage,
 });
 
@@ -184,7 +184,7 @@ function SetlistEditPage() {
         setItemsToDelete([]);
       } else {
         toast.error('콘티를 찾을 수 없습니다.');
-        navigate({ to: '/setlists' });
+        navigate({ to: '/worship/setlists' });
       }
       setLoading(false);
     };
@@ -321,7 +321,7 @@ function SetlistEditPage() {
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate({ to: '/setlists' })}
+          onClick={() => navigate({ to: '/worship/setlists' })}
           className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -333,7 +333,7 @@ function SetlistEditPage() {
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            onClick={() => navigate({ to: '/setlists/$id/view', params: { id: id! } })}
+            onClick={() => navigate({ to: '/worship/setlists/$id/view', params: { id: id! } })}
             icon={<Download className="w-4 h-4" />}
           >
             <span className="hidden sm:inline">PDF</span>

@@ -13,14 +13,14 @@ import {
   ChevronUp,
   Type,
 } from 'lucide-react';
-import { useSongs } from '../../hooks/useSongs';
-import SongModal from '../../components/SongModal';
-import Button from '../../components/Button';
-import LyricsModal from '../../components/LyricsModal';
-import type { SongWithSheets } from '../../types/database';
+import { useSongs } from '@/hooks/useSongs';
+import SongModal from '@/components/SongModal';
+import Button from '@/components/Button';
+import LyricsModal from '@/components/LyricsModal';
+import type { SongWithSheets } from '@/types/database';
 import toast from 'react-hot-toast';
 
-export const Route = createFileRoute('/songs/')({
+export const Route = createFileRoute('/worship/songs/')({
   component: SongsPage,
 });
 
@@ -135,7 +135,7 @@ function SongsPage() {
             <div
               key={song.id}
               className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-primary-300 hover:shadow-md transition-all cursor-pointer"
-              onClick={() => navigate({ to: '/songs/$id/view', params: { id: song.id } })}
+              onClick={() => navigate({ to: '/worship/songs/$id/view', params: { id: song.id } })}
             >
               <div className="p-4">
                 <div className="flex items-start gap-3">

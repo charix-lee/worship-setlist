@@ -25,10 +25,9 @@ function LayoutComponent() {
   };
 
   const navItems = [
-    { to: '/songs' as const, icon: Library, label: '악보 라이브러리' },
-    { to: '/setlists' as const, icon: ListMusic, label: '콘티 목록' },
+    { to: '/worship/songs' as const, icon: Library, label: '악보 라이브러리' },
+    { to: '/worship/setlists' as const, icon: ListMusic, label: '콘티 목록' },
   ];
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 모바일 헤더 */}
@@ -41,7 +40,7 @@ function LayoutComponent() {
         </button>
         <div className="flex items-center gap-2">
           <Music className="w-5 h-5 text-primary-600" />
-          <span className="font-semibold text-gray-900">찬양팀 콘티</span>
+          <span className="font-semibold text-gray-900">교회</span>
         </div>
         <div className="w-10" />
       </header>
@@ -65,7 +64,7 @@ function LayoutComponent() {
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <Music className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-gray-900">찬양팀 콘티</span>
+            <span className="font-semibold text-gray-900">교회</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}

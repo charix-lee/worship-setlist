@@ -1,52 +1,115 @@
 import {
   createContext,
   useContext,
+  useState,
+  useEffect,
   type ReactNode,
 } from 'react';
+import type { User } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/database';
 
-// TODO: 로그인 기능 활성화 시 아래 import 주석 해제
-// import { useEffect, useState } from 'react';
-// import type { User, Session } from '@supabase/supabase-js';
-// import { supabase } from '../lib/supabase';
-
 interface AuthContextType {
-  user: { id: string; email: string } | null;
+  user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signInWithKakao: () => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile: (data: Partial<Profile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 임시 Mock 사용자 (로그인 없이 사용)
-const mockProfile: Profile = {
-  id: 'mock-user',
-  email: 'user@church.org',
-  name: '찬양팀',
-  role: 'admin',
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // TODO: 로그인 기능 활성화 시 실제 인증 로직으로 교체
-  const user = { id: 'mock-user', email: 'user@church.org' };
-  const profile = mockProfile;
-  const loading = false;
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const signIn = async (_email: string, _password: string) => {
-    console.log('로그인 기능은 아직 비활성화 상태입니다.');
+  // 프로필 가져오기
+  const fetchProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('프로필 조회 실패:', error);
+      return null;
+    }
+    return data as Profile;
   };
 
-  const signUp = async (_email: string, _password: string, _name: string) => {
-    console.log('회원가입 기능은 아직 비활성화 상태입니다.');
+  // 초기 세션 확인 및 인증 상태 변화 감지
+  useEffect(() => {
+    // 현재 세션 확인
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id).then(setProfile);
+      }
+      setLoading(false);
+    });
+
+    // 인증 상태 변화 리스너
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          // 프로필은 DB 트리거에서 자동 생성됨, 여기서는 조회만
+          // 약간의 지연 후 프로필 조회 (트리거 실행 대기)
+          setTimeout(async () => {
+            const profileData = await fetchProfile(session.user.id);
+            setProfile(profileData);
+          }, 500);
+        } else {
+          setProfile(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // 카카오 로그인
+  const signInWithKakao = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'kakao',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+    if (error) throw error;
   };
 
+  // 로그아웃
   const signOut = async () => {
-    console.log('로그아웃 기능은 아직 비활성화 상태입니다.');
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    setUser(null);
+    setProfile(null);
+  };
+
+  // 프로필 업데이트
+  const updateProfile = async (data: Partial<Profile>) => {
+    if (!user) throw new Error('로그인이 필요합니다.');
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        ...data,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id);
+
+    if (error) throw error;
+
+    setProfile((prev) => prev ? {
+      ...prev,
+      ...data,
+      updated_at: new Date().toISOString(),
+    } : null);
   };
 
   return (
@@ -55,9 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         loading,
-        signIn,
-        signUp,
+        signInWithKakao,
         signOut,
+        updateProfile,
       }}
     >
       {children}

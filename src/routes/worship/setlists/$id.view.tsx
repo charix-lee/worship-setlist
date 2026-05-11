@@ -21,7 +21,7 @@ import type { SetlistWithItems, SetlistItemWithSong } from '@/types/database';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 
-export const Route = createFileRoute('/setlists/$id/view')({
+export const Route = createFileRoute('/worship/setlists/$id/view')({
   component: SetlistViewPage,
 });
 
@@ -79,7 +79,7 @@ function SetlistViewPage() {
         setSetlist(data);
       } else {
         toast.error('콘티를 찾을 수 없습니다.');
-        navigate({ to: '/setlists' });
+        navigate({ to: '/worship/setlists' });
       }
       setLoading(false);
     };
@@ -216,7 +216,7 @@ function SetlistViewPage() {
     <div className="min-h-screen bg-gray-100">
       <div className="sticky top-0 bg-white border-b border-gray-200 z-10 print:hidden">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button onClick={() => navigate({ to: '/setlists' })} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+          <button onClick={() => navigate({ to: '/worship/setlists' })} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-5 h-5" />
             <span className="hidden sm:inline">목록으로</span>
           </button>
@@ -253,7 +253,7 @@ function SetlistViewPage() {
             )}
 
             <button
-              onClick={() => navigate({ to: '/setlists/$id', params: { id: id! } })}
+              onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
               className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
               title="편집"
             >

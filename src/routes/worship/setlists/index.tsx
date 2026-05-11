@@ -16,7 +16,7 @@ import Button from '@/components/Button';
 import { SERVICE_TYPES } from '@/types/database';
 import toast from 'react-hot-toast';
 
-export const Route = createFileRoute('/setlists/')({
+export const Route = createFileRoute('/worship/setlists/')({
   component: SetlistsPage,
 });
 
@@ -44,7 +44,7 @@ function SetlistsPage() {
       });
       toast.success('콘티가 생성되었습니다.');
       setModalOpen(false);
-      navigate({ to: '/setlists/$id', params: { id: setlist.id } });
+      navigate({ to: '/worship/setlists/$id', params: { id: setlist.id } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '생성 실패');
     } finally {
@@ -118,7 +118,7 @@ function SetlistsPage() {
                   <div
                     key={setlist.id}
                     className="bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300 transition-colors cursor-pointer"
-                    onClick={() => navigate({ to: '/setlists/$id/view', params: { id: setlist.id } })}
+                    onClick={() => navigate({ to: '/worship/setlists/$id/view', params: { id: setlist.id } })}
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -141,7 +141,7 @@ function SetlistsPage() {
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => navigate({ to: '/setlists/$id', params: { id: setlist.id } })}
+                          onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: setlist.id } })}
                           className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
                           title="편집"
                         >

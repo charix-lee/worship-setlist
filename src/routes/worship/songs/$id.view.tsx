@@ -21,7 +21,7 @@ import SongModal from '@/components/SongModal';
 import type { SongWithSheets } from '@/types/database';
 import toast from 'react-hot-toast';
 
-export const Route = createFileRoute('/songs/$id/view')({
+export const Route = createFileRoute('/worship/songs/$id/view')({
   component: SongViewPage,
 });
 
@@ -45,7 +45,7 @@ function SongViewPage() {
         setSong(data);
       } else {
         toast.error('곡을 찾을 수 없습니다.');
-        navigate({ to: '/songs' });
+        navigate({ to: '/worship/songs' });
       }
       setLoading(false);
     };
@@ -122,7 +122,7 @@ function SongViewPage() {
       <div className="sticky top-0 bg-white border-b border-gray-200 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
-            onClick={() => navigate({ to: '/songs' })}
+            onClick={() => navigate({ to: '/worship/songs' })}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-5 h-5" />
