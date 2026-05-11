@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   Search,
   Plus,
@@ -13,14 +13,18 @@ import {
   ChevronUp,
   Type,
 } from 'lucide-react';
-import { useSongs } from '../hooks/useSongs';
-import SongModal from '../components/SongModal';
-import Button from '../components/Button';
-import LyricsModal from '../components/LyricsModal';
-import type { SongWithSheets } from '../types/database';
+import { useSongs } from '../../hooks/useSongs';
+import SongModal from '../../components/SongModal';
+import Button from '../../components/Button';
+import LyricsModal from '../../components/LyricsModal';
+import type { SongWithSheets } from '../../types/database';
 import toast from 'react-hot-toast';
 
-export default function SongsPage() {
+export const Route = createFileRoute('/songs/')({
+  component: SongsPage,
+});
+
+function SongsPage() {
   const navigate = useNavigate();
   const {
     songs,
@@ -39,7 +43,6 @@ export default function SongsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lyricsModalSong, setLyricsModalSong] = useState<SongWithSheets | null>(null);
 
-  // 검색 필터링
   const filteredSongs = useMemo(() => {
     if (!search.trim()) return songs;
     const searchLower = search.toLowerCase();
@@ -58,7 +61,6 @@ export default function SongsPage() {
     if (!confirm(`"${title}" 곡을 삭제하시겠습니까?\n연결된 악보 파일도 함께 삭제됩니다.`)) {
       return;
     }
-
     try {
       await deleteSong(id);
       toast.success('곡이 삭제되었습니다.');
@@ -79,13 +81,11 @@ export default function SongsPage() {
 
   return (
     <div className="p-4 lg:p-6">
-      {/* 헤더 */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">악보 라이브러리</h1>
         <p className="text-gray-600">찬양팀의 모든 악보를 관리하세요</p>
       </div>
 
-      {/* 검색 및 추가 */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -110,7 +110,6 @@ export default function SongsPage() {
         </Button>
       </div>
 
-      {/* 곡 목록 */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
@@ -136,24 +135,20 @@ export default function SongsPage() {
             <div
               key={song.id}
               className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-primary-300 hover:shadow-md transition-all cursor-pointer"
-              onClick={() => navigate(`/songs/${song.id}/view`)}
+              onClick={() => navigate({ to: '/songs/$id/view', params: { id: song.id } })}
             >
-              {/* 곡 헤더 */}
               <div className="p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Music2 className="w-5 h-5 text-primary-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">
-                      {song.title}
-                    </h3>
+                    <h3 className="font-medium text-gray-900 truncate">{song.title}</h3>
                     <p className="text-sm text-gray-500 truncate">
                       {song.artist || '아티스트 미입력'}
                     </p>
                   </div>
 
-                  {/* 악보 키 뱃지들 */}
                   <div className="hidden sm:flex items-center gap-1 flex-wrap justify-end" onClick={(e) => e.stopPropagation()}>
                     {song.song_sheets.map((sheet) => (
                       <a
@@ -168,7 +163,6 @@ export default function SongsPage() {
                     ))}
                   </div>
 
-                  {/* 액션 버튼 */}
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     {song.lyrics && (
                       <button
@@ -205,9 +199,7 @@ export default function SongsPage() {
                       <Trash2 className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() =>
-                        setExpandedId(expandedId === song.id ? null : song.id)
-                      }
+                      onClick={() => setExpandedId(expandedId === song.id ? null : song.id)}
                       className="p-2 text-gray-400 hover:text-gray-600 transition-colors sm:hidden"
                     >
                       {expandedId === song.id ? (
@@ -219,7 +211,6 @@ export default function SongsPage() {
                   </div>
                 </div>
 
-                {/* 모바일 악보 목록 */}
                 {expandedId === song.id && (
                   <div className="mt-3 pt-3 border-t border-gray-100 sm:hidden" onClick={(e) => e.stopPropagation()}>
                     {song.song_sheets.length > 0 ? (
@@ -238,13 +229,9 @@ export default function SongsPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-400">
-                        등록된 악보가 없습니다
-                      </p>
+                      <p className="text-sm text-gray-400">등록된 악보가 없습니다</p>
                     )}
-                    {song.memo && (
-                      <p className="mt-2 text-sm text-gray-500">{song.memo}</p>
-                    )}
+                    {song.memo && <p className="mt-2 text-sm text-gray-500">{song.memo}</p>}
                   </div>
                 )}
               </div>
@@ -253,7 +240,6 @@ export default function SongsPage() {
         </div>
       )}
 
-      {/* 곡 추가/수정 모달 */}
       <SongModal
         isOpen={modalOpen}
         onClose={closeModal}
@@ -270,7 +256,6 @@ export default function SongsPage() {
         onRemoveSheet={removeSheet}
       />
 
-      {/* 가사 모달 */}
       {lyricsModalSong && lyricsModalSong.lyrics && (
         <LyricsModal
           isOpen={!!lyricsModalSong}

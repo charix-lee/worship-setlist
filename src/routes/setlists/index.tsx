@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   Calendar,
   Plus,
@@ -9,13 +10,17 @@ import {
   Loader2,
   Clock,
 } from 'lucide-react';
-import { useSetlists } from '../hooks/useSetlists';
-import Modal from '../components/Modal';
-import Button from '../components/Button';
-import { SERVICE_TYPES } from '../types/database';
+import { useSetlists } from '@/hooks/useSetlists';
+import Modal from '@/components/Modal';
+import Button from '@/components/Button';
+import { SERVICE_TYPES } from '@/types/database';
 import toast from 'react-hot-toast';
 
-export default function SetlistsPage() {
+export const Route = createFileRoute('/setlists/')({
+  component: SetlistsPage,
+});
+
+function SetlistsPage() {
   const { setlists, loading, createSetlist, deleteSetlist } = useSetlists();
   const navigate = useNavigate();
 
@@ -39,7 +44,7 @@ export default function SetlistsPage() {
       });
       toast.success('콘티가 생성되었습니다.');
       setModalOpen(false);
-      navigate(`/setlists/${setlist.id}`);
+      navigate({ to: '/setlists/$id', params: { id: setlist.id } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '생성 실패');
     } finally {
@@ -64,10 +69,9 @@ export default function SetlistsPage() {
     return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} (${days[date.getDay()]})`;
   };
 
-  // 날짜별 그룹핑
   const groupedSetlists = setlists.reduce(
     (acc, setlist) => {
-      const month = setlist.date.substring(0, 7); // YYYY-MM
+      const month = setlist.date.substring(0, 7);
       if (!acc[month]) acc[month] = [];
       acc[month].push(setlist);
       return acc;
@@ -77,22 +81,16 @@ export default function SetlistsPage() {
 
   return (
     <div className="p-4 lg:p-6">
-      {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">콘티 목록</h1>
           <p className="text-gray-600">예배별 콘티를 관리하세요</p>
         </div>
-        <Button
-          onClick={() => setModalOpen(true)}
-          icon={<Plus className="w-5 h-5" />}
-          size="lg"
-        >
+        <Button onClick={() => setModalOpen(true)} icon={<Plus className="w-5 h-5" />} size="lg">
           <span className="hidden sm:inline">새 콘티</span>
         </Button>
       </div>
 
-      {/* 콘티 목록 */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
@@ -120,7 +118,7 @@ export default function SetlistsPage() {
                   <div
                     key={setlist.id}
                     className="bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/setlists/${setlist.id}/view`)}
+                    onClick={() => navigate({ to: '/setlists/$id/view', params: { id: setlist.id } })}
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -128,29 +126,22 @@ export default function SetlistsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-gray-900">
-                            {formatDate(setlist.date)}
-                          </h3>
+                          <h3 className="font-medium text-gray-900">{formatDate(setlist.date)}</h3>
                           <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded">
                             {setlist.service_type}
                           </span>
                         </div>
                         {setlist.description && (
-                          <p className="text-sm text-gray-500 truncate">
-                            {setlist.description}
-                          </p>
+                          <p className="text-sm text-gray-500 truncate">{setlist.description}</p>
                         )}
                         <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
                           <Clock className="w-3 h-3" />
                           {new Date(setlist.created_at).toLocaleDateString()}
                         </div>
                       </div>
-                      <div
-                        className="flex items-center gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => navigate(`/setlists/${setlist.id}`)}
+                          onClick={() => navigate({ to: '/setlists/$id', params: { id: setlist.id } })}
                           className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
                           title="편집"
                         >
@@ -173,7 +164,6 @@ export default function SetlistsPage() {
         </div>
       )}
 
-      {/* 새 콘티 모달 */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="새 콘티 만들기">
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
@@ -199,17 +189,13 @@ export default function SetlistsPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               {SERVICE_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              설명 (선택)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">설명 (선택)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -220,19 +206,10 @@ export default function SetlistsPage() {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setModalOpen(false)}
-              fullWidth
-            >
+            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)} fullWidth>
               취소
             </Button>
-            <Button
-              type="submit"
-              loading={saving}
-              fullWidth
-            >
+            <Button type="submit" loading={saving} fullWidth>
               만들기
             </Button>
           </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router';
 import {
   DndContext,
   closestCenter,
@@ -30,15 +30,18 @@ import {
   X,
   Save,
 } from 'lucide-react';
-import { useSetlists } from '../hooks/useSetlists';
-import { useSongs } from '../hooks/useSongs';
-import Modal from '../components/Modal';
-import Button from '../components/Button';
-import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '../types/database';
-import { MUSIC_KEYS } from '../types/database';
+import { useSetlists } from '../../hooks/useSetlists';
+import { useSongs } from '../../hooks/useSongs';
+import Modal from '../../components/Modal';
+import Button from '../../components/Button';
+import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '../../types/database';
+import { MUSIC_KEYS } from '../../types/database';
 import toast from 'react-hot-toast';
 
-// 드래그 가능한 아이템 컴포넌트
+export const Route = createFileRoute('/setlists/$id')({
+  component: SetlistEditPage,
+});
+
 function SortableItem({
   item,
   onKeyChange,
@@ -64,12 +67,9 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white rounded-xl border border-gray-200 p-4 ${
-        isDragging ? 'shadow-lg opacity-90' : ''
-      }`}
+      className={`bg-white rounded-xl border border-gray-200 p-4 ${isDragging ? 'shadow-lg opacity-90' : ''}`}
     >
       <div className="flex items-start gap-3">
-        {/* 드래그 핸들 */}
         <button
           {...attributes}
           {...listeners}
@@ -78,21 +78,14 @@ function SortableItem({
           <GripVertical className="w-5 h-5" />
         </button>
 
-        {/* 순서 번호 */}
         <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-          <span className="text-sm font-semibold text-primary-700">
-            {item.position}
-          </span>
+          <span className="text-sm font-semibold text-primary-700">{item.position}</span>
         </div>
 
-        {/* 곡 정보 */}
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-gray-900 truncate">{item.song.title}</h3>
-          <p className="text-sm text-gray-500 truncate">
-            {item.song.artist || '아티스트 미입력'}
-          </p>
+          <p className="text-sm text-gray-500 truncate">{item.song.artist || '아티스트 미입력'}</p>
 
-          {/* 키 선택 및 악보 보기 */}
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <select
               value={item.selected_key || ''}
@@ -102,20 +95,15 @@ function SortableItem({
               <option value="">키 선택</option>
               {availableKeys.length > 0 ? (
                 availableKeys.map((key) => (
-                  <option key={key} value={key}>
-                    {key}
-                  </option>
+                  <option key={key} value={key}>{key}</option>
                 ))
               ) : (
                 MUSIC_KEYS.slice(0, 12).map((key) => (
-                  <option key={key} value={key}>
-                    {key}
-                  </option>
+                  <option key={key} value={key}>{key}</option>
                 ))
               )}
             </select>
 
-            {/* 악보 링크 */}
             {item.selected_key && (
               <>
                 {item.song.song_sheets
@@ -136,7 +124,6 @@ function SortableItem({
             )}
           </div>
 
-          {/* 메모 입력 */}
           <input
             type="text"
             value={item.note || ''}
@@ -146,11 +133,7 @@ function SortableItem({
           />
         </div>
 
-        {/* 삭제 버튼 */}
-        <button
-          onClick={onRemove}
-          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-        >
+        <button onClick={onRemove} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
           <Trash2 className="w-5 h-5" />
         </button>
       </div>
@@ -158,8 +141,8 @@ function SortableItem({
   );
 }
 
-export default function SetlistEditPage() {
-  const { id } = useParams<{ id: string }>();
+function SetlistEditPage() {
+  const { id } = useParams({ strict: false });
   const navigate = useNavigate();
   const {
     fetchSetlistById,
@@ -177,25 +160,15 @@ export default function SetlistEditPage() {
   const [originalItems, setOriginalItems] = useState<SetlistItemWithSong[]>([]);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
 
-  // 곡 추가 모달
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
 
-  // 변경사항 있는지 확인
-  const hasChanges = itemsToDelete.length > 0 ||
-    JSON.stringify(items) !== JSON.stringify(originalItems);
+  const hasChanges = itemsToDelete.length > 0 || JSON.stringify(items) !== JSON.stringify(originalItems);
 
-  // 드래그 센서
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   useEffect(() => {
@@ -211,7 +184,7 @@ export default function SetlistEditPage() {
         setItemsToDelete([]);
       } else {
         toast.error('콘티를 찾을 수 없습니다.');
-        navigate('/setlists');
+        navigate({ to: '/setlists' });
       }
       setLoading(false);
     };
@@ -235,23 +208,15 @@ export default function SetlistEditPage() {
   };
 
   const handleKeyChange = (itemId: string, key: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, selected_key: key } : item
-      )
-    );
+    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, selected_key: key } : item)));
   };
 
   const handleNoteChange = (itemId: string, note: string) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, note } : item))
-    );
+    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, note } : item)));
   };
 
   const handleRemoveItem = (itemId: string) => {
-    // 삭제 예정 목록에 추가
     setItemsToDelete((prev) => [...prev, itemId]);
-    // 화면에서 제거
     setItems((prev) => {
       const filtered = prev.filter((item) => item.id !== itemId);
       return filtered.map((item, index) => ({ ...item, position: index + 1 }));
@@ -259,18 +224,15 @@ export default function SetlistEditPage() {
     toast.success('곡이 삭제 예정되었습니다. 저장 시 적용됩니다.');
   };
 
-  // 저장 버튼 클릭
   const handleSave = async () => {
     if (!id) return;
 
     setSaving(true);
     try {
-      // 1. 삭제 예정 항목들 삭제
       for (const itemId of itemsToDelete) {
         await removeItemFromSetlist(itemId);
       }
 
-      // 2. 변경된 항목들 업데이트 (키, 메모)
       for (const item of items) {
         const original = originalItems.find((o) => o.id === item.id);
         if (original) {
@@ -286,20 +248,15 @@ export default function SetlistEditPage() {
         }
       }
 
-      // 3. 순서 변경 적용
       const orderChanged = items.some((item) => {
         const original = originalItems.find((o) => o.id === item.id);
         return original && original.position !== item.position;
       });
 
       if (orderChanged) {
-        await reorderSetlistItems(
-          id,
-          items.map((item) => ({ id: item.id, position: item.position }))
-        );
+        await reorderSetlistItems(id, items.map((item) => ({ id: item.id, position: item.position })));
       }
 
-      // 원본 상태 업데이트
       setOriginalItems(JSON.parse(JSON.stringify(items)));
       setItemsToDelete([]);
 
@@ -322,7 +279,6 @@ export default function SetlistEditPage() {
 
       await addItemToSetlist(id, song.id, position, defaultKey);
 
-      // 콘티 다시 로드
       const data = await fetchSetlistById(id);
       if (data) {
         setItems(data.setlist_items);
@@ -342,10 +298,7 @@ export default function SetlistEditPage() {
   const filteredSongs = songs.filter((song) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
-    return (
-      song.title.toLowerCase().includes(query) ||
-      song.artist?.toLowerCase().includes(query)
-    );
+    return song.title.toLowerCase().includes(query) || song.artist?.toLowerCase().includes(query);
   });
 
   const formatDate = (dateStr: string) => {
@@ -362,47 +315,35 @@ export default function SetlistEditPage() {
     );
   }
 
-  if (!setlist) {
-    return null;
-  }
+  if (!setlist) return null;
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
-      {/* 헤더 */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate('/setlists')}
+          onClick={() => navigate({ to: '/setlists' })}
           className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">
-            {formatDate(setlist.date)}
-          </h1>
+          <h1 className="text-xl font-bold text-gray-900">{formatDate(setlist.date)}</h1>
           <p className="text-sm text-gray-500">{setlist.service_type}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            onClick={() => navigate(`/setlists/${id}/view`)}
+            onClick={() => navigate({ to: '/setlists/$id/view', params: { id: id! } })}
             icon={<Download className="w-4 h-4" />}
           >
             <span className="hidden sm:inline">PDF</span>
           </Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            loading={saving}
-            disabled={!hasChanges}
-            icon={<Save className="w-4 h-4" />}
-          >
+          <Button variant="primary" onClick={handleSave} loading={saving} disabled={!hasChanges} icon={<Save className="w-4 h-4" />}>
             저장
           </Button>
         </div>
       </div>
 
-      {/* 곡 추가 버튼 */}
       <button
         onClick={() => {
           fetchSongs();
@@ -414,21 +355,14 @@ export default function SetlistEditPage() {
         곡 추가하기
       </button>
 
-      {/* 곡 목록 (드래그앤드롭) */}
       {items.length === 0 ? (
         <div className="text-center py-12">
           <Music2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">아직 곡이 없습니다.</p>
-          <p className="text-sm text-gray-400 mt-1">
-            위 버튼을 눌러 곡을 추가해주세요.
-          </p>
+          <p className="text-sm text-gray-400 mt-1">위 버튼을 눌러 곡을 추가해주세요.</p>
         </div>
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={items} strategy={verticalListSortingStrategy}>
             <div className="space-y-3">
               {items.map((item) => (
@@ -445,18 +379,8 @@ export default function SetlistEditPage() {
         </DndContext>
       )}
 
-      {/* 곡 추가 모달 */}
-      <Modal
-        isOpen={addModalOpen}
-        onClose={() => {
-          setAddModalOpen(false);
-          setSearchQuery('');
-        }}
-        title="곡 추가"
-        size="lg"
-      >
+      <Modal isOpen={addModalOpen} onClose={() => { setAddModalOpen(false); setSearchQuery(''); }} title="곡 추가" size="lg">
         <div className="space-y-4">
-          {/* 검색 */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -468,16 +392,12 @@ export default function SetlistEditPage() {
               autoFocus
             />
             {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          {/* 곡 목록 */}
           <div className="max-h-96 overflow-y-auto space-y-2">
             {filteredSongs.length === 0 ? (
               <p className="text-center text-gray-500 py-8">
@@ -501,36 +421,23 @@ export default function SetlistEditPage() {
                       <Music2 className="w-5 h-5 text-primary-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 truncate">
-                        {song.title}
-                      </h4>
-                      <p className="text-sm text-gray-500 truncate">
-                        {song.artist || '아티스트 미입력'}
-                      </p>
+                      <h4 className="font-medium text-gray-900 truncate">{song.title}</h4>
+                      <p className="text-sm text-gray-500 truncate">{song.artist || '아티스트 미입력'}</p>
                     </div>
                     {song.song_sheets.length > 0 && (
                       <div className="flex items-center gap-1">
                         {song.song_sheets.slice(0, 3).map((sheet) => (
-                          <span
-                            key={sheet.id}
-                            className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
-                          >
+                          <span key={sheet.id} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
                             {sheet.music_key}
                           </span>
                         ))}
                         {song.song_sheets.length > 3 && (
-                          <span className="text-xs text-gray-400">
-                            +{song.song_sheets.length - 3}
-                          </span>
+                          <span className="text-xs text-gray-400">+{song.song_sheets.length - 3}</span>
                         )}
                       </div>
                     )}
-                    {adding === song.id && (
-                      <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
-                    )}
-                    {isAlreadyAdded && (
-                      <span className="text-xs text-gray-400">추가됨</span>
-                    )}
+                    {adding === song.id && <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />}
+                    {isAlreadyAdded && <span className="text-xs text-gray-400">추가됨</span>}
                   </button>
                 );
               })

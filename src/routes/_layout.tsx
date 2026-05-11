@@ -1,27 +1,32 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { createFileRoute, Outlet, Link, useNavigate, useMatchRoute } from '@tanstack/react-router';
 import { Music, Library, ListMusic, LogOut, Menu, X } from 'lucide-react';
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 
-export default function Layout() {
+export const Route = createFileRoute('/_layout')({
+  component: LayoutComponent,
+});
+
+function LayoutComponent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const matchRoute = useMatchRoute();
 
   const handleSignOut = async () => {
     try {
       await signOut();
       toast.success('로그아웃 되었습니다.');
-      navigate('/login');
+      navigate({ to: '/login' });
     } catch {
       toast.error('로그아웃 실패');
     }
   };
 
   const navItems = [
-    { to: '/songs', icon: Library, label: '악보 라이브러리' },
-    { to: '/setlists', icon: ListMusic, label: '콘티 목록' },
+    { to: '/songs' as const, icon: Library, label: '악보 라이브러리' },
+    { to: '/setlists' as const, icon: ListMusic, label: '콘티 목록' },
   ];
 
   return (
@@ -38,7 +43,7 @@ export default function Layout() {
           <Music className="w-5 h-5 text-primary-600" />
           <span className="font-semibold text-gray-900">찬양팀 콘티</span>
         </div>
-        <div className="w-10" /> {/* 균형을 위한 여백 */}
+        <div className="w-10" />
       </header>
 
       {/* 모바일 오버레이 */}
@@ -55,7 +60,6 @@ export default function Layout() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* 사이드바 헤더 */}
         <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
@@ -71,28 +75,27 @@ export default function Layout() {
           </button>
         </div>
 
-        {/* 네비게이션 */}
         <nav className="p-4 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+          {navItems.map((item) => {
+            const isActive = matchRoute({ to: item.to, fuzzy: true });
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-primary-50 text-primary-700'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`
-              }
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </NavLink>
-          ))}
+                }`}
+              >
+                <item.icon className="w-5 h-5" />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* 하단 사용자 정보 */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center">
@@ -117,7 +120,6 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* 메인 컨텐츠 */}
       <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
         <Outlet />
       </main>

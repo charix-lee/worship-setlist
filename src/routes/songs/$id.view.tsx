@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router';
 import {
   ArrowLeft,
   Music2,
@@ -15,14 +15,18 @@ import {
   MessageSquare,
   Download,
 } from 'lucide-react';
-import { useSongs } from '../hooks/useSongs';
-import Button from '../components/Button';
-import SongModal from '../components/SongModal';
-import type { SongWithSheets } from '../types/database';
+import { useSongs } from '@/hooks/useSongs';
+import Button from '@/components/Button';
+import SongModal from '@/components/SongModal';
+import type { SongWithSheets } from '@/types/database';
 import toast from 'react-hot-toast';
 
-export default function SongViewPage() {
-  const { id } = useParams<{ id: string }>();
+export const Route = createFileRoute('/songs/$id/view')({
+  component: SongViewPage,
+});
+
+function SongViewPage() {
+  const { id } = useParams({ strict: false });
   const navigate = useNavigate();
   const { fetchSongById, updateSong, addSheet, removeSheet } = useSongs();
 
@@ -41,7 +45,7 @@ export default function SongViewPage() {
         setSong(data);
       } else {
         toast.error('곡을 찾을 수 없습니다.');
-        navigate('/songs');
+        navigate({ to: '/songs' });
       }
       setLoading(false);
     };
@@ -98,7 +102,6 @@ export default function SongViewPage() {
   }) => {
     if (!song) return { id: '' };
     await updateSong(song.id, data);
-    // Reload song data
     const updated = await fetchSongById(song.id);
     if (updated) setSong(updated);
     return { id: song.id };
@@ -112,17 +115,14 @@ export default function SongViewPage() {
     );
   }
 
-  if (!song) {
-    return null;
-  }
+  if (!song) return null;
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* 헤더 */}
       <div className="sticky top-0 bg-white border-b border-gray-200 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
-            onClick={() => navigate('/songs')}
+            onClick={() => navigate({ to: '/songs' })}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -140,30 +140,22 @@ export default function SongViewPage() {
                 <PlayCircle className="w-5 h-5" />
               </a>
             )}
-            <Button
-              onClick={() => setEditModalOpen(true)}
-              variant="secondary"
-              icon={<Edit2 className="w-4 h-4" />}
-            >
+            <Button onClick={() => setEditModalOpen(true)} variant="secondary" icon={<Edit2 className="w-4 h-4" />}>
               수정
             </Button>
           </div>
         </div>
       </div>
 
-      {/* 콘텐츠 */}
       <div className="max-w-3xl mx-auto p-4 lg:p-6">
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          {/* 곡 헤더 */}
           <div className="p-6 lg:p-8 border-b border-gray-200">
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Music2 className="w-8 h-8 text-primary-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                  {song.title}
-                </h1>
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">{song.title}</h1>
                 {song.artist && (
                   <p className="text-lg text-gray-600 flex items-center gap-2">
                     <User className="w-4 h-4" />
@@ -177,7 +169,6 @@ export default function SongViewPage() {
               </div>
             </div>
 
-            {/* 메모 */}
             {song.memo && (
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800 flex items-start gap-2">
@@ -188,7 +179,6 @@ export default function SongViewPage() {
             )}
           </div>
 
-          {/* 악보 섹션 */}
           <div className="p-6 lg:p-8 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5" />
@@ -207,15 +197,9 @@ export default function SongViewPage() {
                   const isImage = !isPdf;
 
                   return (
-                    <div
-                      key={sheet.id}
-                      className="border border-gray-200 rounded-lg overflow-hidden"
-                    >
-                      {/* 키 헤더 */}
+                    <div key={sheet.id} className="border border-gray-200 rounded-lg overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
-                        <span className="font-bold text-primary-700 text-lg">
-                          {sheet.music_key}
-                        </span>
+                        <span className="font-bold text-primary-700 text-lg">{sheet.music_key}</span>
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() => downloadSheet(sheet.file_url, sheet.music_key)}
@@ -236,20 +220,11 @@ export default function SongViewPage() {
                         </div>
                       </div>
 
-                      {/* 악보 미리보기 */}
                       <div className="bg-white">
                         {isPdf ? (
-                          <iframe
-                            src={sheet.file_url}
-                            className="w-full h-[500px]"
-                            title={`${song.title} - ${sheet.music_key}`}
-                          />
+                          <iframe src={sheet.file_url} className="w-full h-[500px]" title={`${song.title} - ${sheet.music_key}`} />
                         ) : isImage ? (
-                          <img
-                            src={sheet.file_url}
-                            alt={`${song.title} - ${sheet.music_key}`}
-                            className="w-full"
-                          />
+                          <img src={sheet.file_url} alt={`${song.title} - ${sheet.music_key}`} className="w-full" />
                         ) : null}
                       </div>
                     </div>
@@ -259,7 +234,6 @@ export default function SongViewPage() {
             )}
           </div>
 
-          {/* 가사 섹션 */}
           <div className="p-6 lg:p-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">가사</h2>
@@ -267,9 +241,7 @@ export default function SongViewPage() {
                 <button
                   onClick={copyLyrics}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                    lyricsCopied
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    lyricsCopied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
                   {lyricsCopied ? (
@@ -289,9 +261,7 @@ export default function SongViewPage() {
 
             {song.lyrics ? (
               <div className="bg-gray-50 rounded-lg p-4">
-                <pre className="whitespace-pre-wrap font-sans text-gray-800 text-sm leading-relaxed">
-                  {song.lyrics}
-                </pre>
+                <pre className="whitespace-pre-wrap font-sans text-gray-800 text-sm leading-relaxed">{song.lyrics}</pre>
               </div>
             ) : (
               <div className="text-center py-8 bg-gray-50 rounded-lg">
@@ -302,7 +272,6 @@ export default function SongViewPage() {
         </div>
       </div>
 
-      {/* 수정 모달 */}
       <SongModal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
@@ -311,7 +280,6 @@ export default function SongViewPage() {
         onAddSheet={addSheet}
         onRemoveSheet={async (sheetId, fileUrl) => {
           await removeSheet(sheetId, fileUrl);
-          // Reload song data
           const updated = await fetchSongById(song.id);
           if (updated) setSong(updated);
         }}
