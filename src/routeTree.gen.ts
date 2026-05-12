@@ -9,10 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScheduleIndexRouteImport } from './routes/schedule/index'
+import { Route as PlazaIndexRouteImport } from './routes/plaza/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as MypageIndexRouteImport } from './routes/mypage/index'
+import { Route as MyChurchIndexRouteImport } from './routes/my-church/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as WorshipSongsIndexRouteImport } from './routes/worship/songs/index'
 import { Route as WorshipSetlistsIndexRouteImport } from './routes/worship/setlists/index'
@@ -20,13 +22,19 @@ import { Route as WorshipSetlistsIdRouteImport } from './routes/worship/setlists
 import { Route as WorshipSongsIdViewRouteImport } from './routes/worship/songs/$id.view'
 import { Route as WorshipSetlistsIdViewRouteImport } from './routes/worship/setlists/$id.view'
 
-const LayoutRoute = LayoutRouteImport.update({
-  id: '/_layout',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScheduleIndexRoute = ScheduleIndexRouteImport.update({
   id: '/schedule/',
   path: '/schedule/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlazaIndexRoute = PlazaIndexRouteImport.update({
+  id: '/plaza/',
+  path: '/plaza/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingIndexRoute = OnboardingIndexRouteImport.update({
@@ -37,6 +45,11 @@ const OnboardingIndexRoute = OnboardingIndexRouteImport.update({
 const MypageIndexRoute = MypageIndexRouteImport.update({
   id: '/mypage/',
   path: '/mypage/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyChurchIndexRoute = MyChurchIndexRouteImport.update({
+  id: '/my-church/',
+  path: '/my-church/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginIndexRoute = LoginIndexRouteImport.update({
@@ -71,10 +84,12 @@ const WorshipSetlistsIdViewRoute = WorshipSetlistsIdViewRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof LayoutRoute
+  '/': typeof IndexRoute
   '/login/': typeof LoginIndexRoute
+  '/my-church/': typeof MyChurchIndexRoute
   '/mypage/': typeof MypageIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
+  '/plaza/': typeof PlazaIndexRoute
   '/schedule/': typeof ScheduleIndexRoute
   '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
   '/worship/setlists/': typeof WorshipSetlistsIndexRoute
@@ -83,10 +98,12 @@ export interface FileRoutesByFullPath {
   '/worship/songs/$id/view': typeof WorshipSongsIdViewRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof LayoutRoute
+  '/': typeof IndexRoute
   '/login': typeof LoginIndexRoute
+  '/my-church': typeof MyChurchIndexRoute
   '/mypage': typeof MypageIndexRoute
   '/onboarding': typeof OnboardingIndexRoute
+  '/plaza': typeof PlazaIndexRoute
   '/schedule': typeof ScheduleIndexRoute
   '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
   '/worship/setlists': typeof WorshipSetlistsIndexRoute
@@ -96,10 +113,12 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_layout': typeof LayoutRoute
+  '/': typeof IndexRoute
   '/login/': typeof LoginIndexRoute
+  '/my-church/': typeof MyChurchIndexRoute
   '/mypage/': typeof MypageIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
+  '/plaza/': typeof PlazaIndexRoute
   '/schedule/': typeof ScheduleIndexRoute
   '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
   '/worship/setlists/': typeof WorshipSetlistsIndexRoute
@@ -112,8 +131,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login/'
+    | '/my-church/'
     | '/mypage/'
     | '/onboarding/'
+    | '/plaza/'
     | '/schedule/'
     | '/worship/setlists/$id'
     | '/worship/setlists/'
@@ -124,8 +145,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/my-church'
     | '/mypage'
     | '/onboarding'
+    | '/plaza'
     | '/schedule'
     | '/worship/setlists/$id'
     | '/worship/setlists'
@@ -134,10 +157,12 @@ export interface FileRouteTypes {
     | '/worship/songs/$id/view'
   id:
     | '__root__'
-    | '/_layout'
+    | '/'
     | '/login/'
+    | '/my-church/'
     | '/mypage/'
     | '/onboarding/'
+    | '/plaza/'
     | '/schedule/'
     | '/worship/setlists/$id'
     | '/worship/setlists/'
@@ -147,10 +172,12 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  LayoutRoute: typeof LayoutRoute
+  IndexRoute: typeof IndexRoute
   LoginIndexRoute: typeof LoginIndexRoute
+  MyChurchIndexRoute: typeof MyChurchIndexRoute
   MypageIndexRoute: typeof MypageIndexRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
+  PlazaIndexRoute: typeof PlazaIndexRoute
   ScheduleIndexRoute: typeof ScheduleIndexRoute
   WorshipSetlistsIdRoute: typeof WorshipSetlistsIdRouteWithChildren
   WorshipSetlistsIndexRoute: typeof WorshipSetlistsIndexRoute
@@ -160,11 +187,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_layout': {
-      id: '/_layout'
-      path: ''
+    '/': {
+      id: '/'
+      path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof LayoutRouteImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/schedule/': {
@@ -172,6 +199,13 @@ declare module '@tanstack/react-router' {
       path: '/schedule'
       fullPath: '/schedule/'
       preLoaderRoute: typeof ScheduleIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plaza/': {
+      id: '/plaza/'
+      path: '/plaza'
+      fullPath: '/plaza/'
+      preLoaderRoute: typeof PlazaIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding/': {
@@ -186,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/mypage'
       fullPath: '/mypage/'
       preLoaderRoute: typeof MypageIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-church/': {
+      id: '/my-church/'
+      path: '/my-church'
+      fullPath: '/my-church/'
+      preLoaderRoute: typeof MyChurchIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login/': {
@@ -245,10 +286,12 @@ const WorshipSetlistsIdRouteWithChildren =
   WorshipSetlistsIdRoute._addFileChildren(WorshipSetlistsIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  LayoutRoute: LayoutRoute,
+  IndexRoute: IndexRoute,
   LoginIndexRoute: LoginIndexRoute,
+  MyChurchIndexRoute: MyChurchIndexRoute,
   MypageIndexRoute: MypageIndexRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
+  PlazaIndexRoute: PlazaIndexRoute,
   ScheduleIndexRoute: ScheduleIndexRoute,
   WorshipSetlistsIdRoute: WorshipSetlistsIdRouteWithChildren,
   WorshipSetlistsIndexRoute: WorshipSetlistsIndexRoute,

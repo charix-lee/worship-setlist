@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { Music, Library, ListMusic, LogOut, Menu, X, ChevronDown, Users, User, CalendarDays, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import BottomNavigation from '@/components/BottomNavigation';
 import toast from 'react-hot-toast';
 
 export const Route = createRootRoute({
@@ -30,6 +31,12 @@ function RootComponent() {
 
 // 네비게이션 없이 렌더링할 경로들
 const noLayoutPaths = ['/login', '/onboarding'];
+
+// 메인 선택 페이지 (네비게이션 없음)
+const isHomePage = (path: string) => path === '/';
+
+// 광장 경로 (사이드바 없이 하단탭만)
+const plazaPaths = ['/plaza'];
 
 type NavChildItem = {
   to: '/worship/songs' | '/worship/setlists';
@@ -65,6 +72,9 @@ function LayoutWrapper() {
   // 로그인 페이지 등에서는 네비게이션 없이 렌더링
   const isNoLayoutPage = noLayoutPaths.some((path) => location.pathname.startsWith(path));
 
+  // 광장 페이지는 사이드바 없이 하단탭만
+  const isPlazaPage = plazaPaths.some((path) => location.pathname.startsWith(path));
+
   // 인증 및 온보딩 체크
   useEffect(() => {
     if (loading) return;
@@ -91,13 +101,25 @@ function LayoutWrapper() {
     );
   }
 
-  if (isNoLayoutPage) {
+  if (isNoLayoutPage || isHomePage(location.pathname)) {
     return <Outlet />;
   }
 
   // 로그인 안 된 경우 (리다이렉트 전 빈 화면)
   if (!user) {
     return null;
+  }
+
+  // 광장 페이지는 사이드바 없이 탭만
+  if (isPlazaPage) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <main className="pb-16 lg:pb-0 lg:pt-14 min-h-screen">
+          <Outlet />
+        </main>
+        <BottomNavigation />
+      </div>
+    );
   }
 
   const handleSignOut = async () => {
@@ -114,6 +136,10 @@ function LayoutWrapper() {
     setOpenMenus((prev) =>
       prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
     );
+  };
+
+  const handleMyChurchPage = () => {
+    navigate({ to: '/my-church' });
   };
 
   const navItems: NavItem[] = [
@@ -145,7 +171,7 @@ function LayoutWrapper() {
         >
           <Menu className="w-6 h-6" />
         </button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" onClick={handleMyChurchPage}>
           <Music className="w-5 h-5 text-primary-600" />
           <span className="font-semibold text-gray-900">교회</span>
         </div>
@@ -162,12 +188,11 @@ function LayoutWrapper() {
 
       {/* 사이드바 */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-200 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={handleMyChurchPage}>
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <Music className="w-4 h-4 text-white" />
             </div>
@@ -190,11 +215,10 @@ function LayoutWrapper() {
                   key={item.to}
                   to={item.to}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
                       ? 'bg-primary-50 text-primary-700'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   <item.icon className="w-5 h-5" />
                   {item.label}
@@ -212,11 +236,10 @@ function LayoutWrapper() {
               <div key={group.id}>
                 <button
                   onClick={() => toggleMenu(group.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    hasActiveChild
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${hasActiveChild
                       ? 'text-primary-700'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <group.icon className="w-5 h-5" />
@@ -236,11 +259,10 @@ function LayoutWrapper() {
                           key={child.to}
                           to={child.to}
                           onClick={() => setSidebarOpen(false)}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            isActive
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
                               ? 'bg-primary-50 text-primary-700'
                               : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                          }`}
+                            }`}
                         >
                           <child.icon className="w-4 h-4" />
                           {child.label}
@@ -288,9 +310,11 @@ function LayoutWrapper() {
         </div>
       </aside>
 
-      <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
+      <main className="lg:ml-64 pt-14 lg:pt-0 pb-16 lg:pb-0 min-h-screen">
         <Outlet />
       </main>
+
+      <BottomNavigation />
     </div>
   );
 }

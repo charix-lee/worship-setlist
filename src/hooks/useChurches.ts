@@ -26,7 +26,7 @@ export function useChurches() {
   }, [fetchChurches]);
 
   // 교회 검색
-  const searchChurches = async (query: string): Promise<Church[]> => {
+  const searchChurches = useCallback(async (query: string): Promise<Church[]> => {
     if (!query.trim()) return churches;
 
     const { data, error } = await supabase
@@ -41,18 +41,18 @@ export function useChurches() {
       return [];
     }
     return data || [];
-  };
+  }, [churches]);
 
   // 교회 추가
-  const createChurch = async (
-    data: Omit<Church, 'id' | 'created_by' | 'created_at' | 'updated_at'>
+  const createChurch = useCallback(async (
+    churchData: Omit<Church, 'id' | 'created_by' | 'created_at' | 'updated_at'>
   ): Promise<Church | null> => {
     const { data: newChurch, error } = await supabase
       .from('churches')
       .insert({
-        name: data.name,
-        address: data.address,
-        denomination: data.denomination,
+        name: churchData.name,
+        address: churchData.address,
+        denomination: churchData.denomination,
       })
       .select()
       .single();
@@ -65,10 +65,10 @@ export function useChurches() {
     // 목록 갱신
     await fetchChurches();
     return newChurch;
-  };
+  }, [fetchChurches]);
 
   // 교회 조회 (ID로)
-  const getChurchById = async (id: string): Promise<Church | null> => {
+  const getChurchById = useCallback(async (id: string): Promise<Church | null> => {
     const { data, error } = await supabase
       .from('churches')
       .select('*')
@@ -80,7 +80,7 @@ export function useChurches() {
       return null;
     }
     return data;
-  };
+  }, []);
 
   return {
     churches,

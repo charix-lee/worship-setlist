@@ -32,11 +32,21 @@ function MyPage() {
   const { churches, searchChurches, createChurch, getChurchById } = useChurches();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [name, setName] = useState(profile?.name || '');
-  const [birthDate, setBirthDate] = useState(profile?.birth_date || '');
-  const [region, setRegion] = useState(profile?.region || '');
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url || null);
+  const [name, setName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [region, setRegion] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // 프로필 데이터 로드시 상태 업데이트
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name || '');
+      setBirthDate(profile.birth_date || '');
+      setRegion(profile.region || '');
+      setAvatarPreview(profile.avatar_url || null);
+    }
+  }, [profile]);
 
   // 교회 관련 상태
   const [selectedChurch, setSelectedChurch] = useState<Church | null>(null);
@@ -139,6 +149,7 @@ function MyPage() {
       return;
     }
 
+    // 프로필 사진은 나중에 Storage 연동 후 저장
     const reader = new FileReader();
     reader.onload = (event) => {
       setAvatarPreview(event.target?.result as string);
@@ -154,10 +165,10 @@ function MyPage() {
         birth_date: birthDate || null,
         region: region || null,
         church_id: selectedChurch?.id || null,
-        avatar_url: avatarPreview,
       });
       toast.success('프로필이 저장되었습니다.');
-    } catch {
+    } catch (error) {
+      console.error('Profile save error:', error);
       toast.error('저장에 실패했습니다.');
     } finally {
       setSaving(false);
