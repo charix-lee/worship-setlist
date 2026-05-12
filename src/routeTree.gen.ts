@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as ScheduleIndexRouteImport } from './routes/schedule/index'
+import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as MypageIndexRouteImport } from './routes/mypage/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as WorshipSongsIndexRouteImport } from './routes/worship/songs/index'
@@ -26,6 +27,11 @@ const LayoutRoute = LayoutRouteImport.update({
 const ScheduleIndexRoute = ScheduleIndexRouteImport.update({
   id: '/schedule/',
   path: '/schedule/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingIndexRoute = OnboardingIndexRouteImport.update({
+  id: '/onboarding/',
+  path: '/onboarding/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MypageIndexRoute = MypageIndexRouteImport.update({
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/': typeof LayoutRoute
   '/login/': typeof LoginIndexRoute
   '/mypage/': typeof MypageIndexRoute
+  '/onboarding/': typeof OnboardingIndexRoute
   '/schedule/': typeof ScheduleIndexRoute
   '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
   '/worship/setlists/': typeof WorshipSetlistsIndexRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByTo {
   '/': typeof LayoutRoute
   '/login': typeof LoginIndexRoute
   '/mypage': typeof MypageIndexRoute
+  '/onboarding': typeof OnboardingIndexRoute
   '/schedule': typeof ScheduleIndexRoute
   '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
   '/worship/setlists': typeof WorshipSetlistsIndexRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRoute
   '/login/': typeof LoginIndexRoute
   '/mypage/': typeof MypageIndexRoute
+  '/onboarding/': typeof OnboardingIndexRoute
   '/schedule/': typeof ScheduleIndexRoute
   '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
   '/worship/setlists/': typeof WorshipSetlistsIndexRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login/'
     | '/mypage/'
+    | '/onboarding/'
     | '/schedule/'
     | '/worship/setlists/$id'
     | '/worship/setlists/'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/mypage'
+    | '/onboarding'
     | '/schedule'
     | '/worship/setlists/$id'
     | '/worship/setlists'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/login/'
     | '/mypage/'
+    | '/onboarding/'
     | '/schedule/'
     | '/worship/setlists/$id'
     | '/worship/setlists/'
@@ -138,6 +150,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRoute
   LoginIndexRoute: typeof LoginIndexRoute
   MypageIndexRoute: typeof MypageIndexRoute
+  OnboardingIndexRoute: typeof OnboardingIndexRoute
   ScheduleIndexRoute: typeof ScheduleIndexRoute
   WorshipSetlistsIdRoute: typeof WorshipSetlistsIdRouteWithChildren
   WorshipSetlistsIndexRoute: typeof WorshipSetlistsIndexRoute
@@ -159,6 +172,13 @@ declare module '@tanstack/react-router' {
       path: '/schedule'
       fullPath: '/schedule/'
       preLoaderRoute: typeof ScheduleIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding/': {
+      id: '/onboarding/'
+      path: '/onboarding'
+      fullPath: '/onboarding/'
+      preLoaderRoute: typeof OnboardingIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mypage/': {
@@ -228,6 +248,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRoute,
   LoginIndexRoute: LoginIndexRoute,
   MypageIndexRoute: MypageIndexRoute,
+  OnboardingIndexRoute: OnboardingIndexRoute,
   ScheduleIndexRoute: ScheduleIndexRoute,
   WorshipSetlistsIdRoute: WorshipSetlistsIdRouteWithChildren,
   WorshipSetlistsIndexRoute: WorshipSetlistsIndexRoute,

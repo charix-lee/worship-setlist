@@ -57,13 +57,14 @@ CREATE TRIGGER on_churches_updated
 
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
+  email TEXT,
   name TEXT,
   avatar_url TEXT,
   birth_date DATE,
   region TEXT,
   church_id UUID REFERENCES public.churches(id) ON DELETE SET NULL,
   role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  is_onboarded BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -103,13 +104,14 @@ CREATE TRIGGER on_profiles_updated
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, name, avatar_url, role)
+  INSERT INTO public.profiles (id, email, name, avatar_url, role, is_onboarded)
   VALUES (
     NEW.id,
-    COALESCE(NEW.email, NEW.raw_user_meta_data->>'email', ''),
-    COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name'),
-    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture'),
-    'member'
+    COALESCE(NEW.email, NEW.raw_user_meta_data->>'email'),
+    COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'nickname'),
+    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', NEW.raw_user_meta_data->>'profile_image_url'),
+    'member',
+    FALSE
   );
   RETURN NEW;
 END;

@@ -11,13 +11,14 @@ export interface Church {
 
 export interface Profile {
   id: string;
-  email: string;
+  email: string | null;
   name: string | null;
   avatar_url: string | null;
   birth_date: string | null;
   region: string | null;
   church_id: string | null;
   role: 'admin' | 'member';
+  is_onboarded: boolean;
   created_at: string;
   updated_at: string;
 }

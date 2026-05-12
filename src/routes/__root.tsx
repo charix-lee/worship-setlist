@@ -1,7 +1,7 @@
 import { Outlet, createRootRoute, Link, useNavigate, useMatchRoute, useLocation } from '@tanstack/react-router';
 import { Toaster } from 'react-hot-toast';
-import { Music, Library, ListMusic, LogOut, Menu, X, ChevronDown, Users, User, CalendarDays } from 'lucide-react';
-import { useState } from 'react';
+import { Music, Library, ListMusic, LogOut, Menu, X, ChevronDown, Users, User, CalendarDays, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -29,7 +29,7 @@ function RootComponent() {
 }
 
 // 네비게이션 없이 렌더링할 경로들
-const noLayoutPaths = ['/login'];
+const noLayoutPaths = ['/login', '/onboarding'];
 
 type NavChildItem = {
   to: '/worship/songs' | '/worship/setlists';
@@ -57,7 +57,7 @@ type NavItem = NavGroup | NavSingle;
 function LayoutWrapper() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>(['worship']);
-  const { profile, signOut } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const matchRoute = useMatchRoute();
   const location = useLocation();
@@ -65,8 +65,39 @@ function LayoutWrapper() {
   // 로그인 페이지 등에서는 네비게이션 없이 렌더링
   const isNoLayoutPage = noLayoutPaths.some((path) => location.pathname.startsWith(path));
 
+  // 인증 및 온보딩 체크
+  useEffect(() => {
+    if (loading) return;
+
+    // 로그인/온보딩 페이지가 아닌데 로그인 안 된 경우
+    if (!user && !isNoLayoutPage) {
+      navigate({ to: '/login' });
+      return;
+    }
+
+    // 로그인 됐는데 온보딩 안 된 경우
+    if (user && profile && !profile.is_onboarded && !location.pathname.startsWith('/onboarding')) {
+      navigate({ to: '/onboarding' });
+      return;
+    }
+  }, [user, profile, loading, isNoLayoutPage, location.pathname, navigate]);
+
+  // 로딩 중
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
+
   if (isNoLayoutPage) {
     return <Outlet />;
+  }
+
+  // 로그인 안 된 경우 (리다이렉트 전 빈 화면)
+  if (!user) {
+    return null;
   }
 
   const handleSignOut = async () => {

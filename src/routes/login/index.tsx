@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Church, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 export const Route = createFileRoute('/login/')({
@@ -10,7 +10,21 @@ export const Route = createFileRoute('/login/')({
 
 function LoginPage() {
   const [loading, setLoading] = useState(false);
-  const { signInWithKakao } = useAuth();
+  const { user, profile, loading: authLoading, signInWithKakao } = useAuth();
+  const navigate = useNavigate();
+
+  // 이미 로그인된 경우 리다이렉트
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (user) {
+      if (profile?.is_onboarded) {
+        navigate({ to: '/' });
+      } else {
+        navigate({ to: '/onboarding' });
+      }
+    }
+  }, [user, profile, authLoading, navigate]);
 
   const handleKakaoLogin = async () => {
     setLoading(true);
@@ -22,6 +36,15 @@ function LoginPage() {
       setLoading(false);
     }
   };
+
+  // 인증 확인 중일 때 로딩 표시
+  if (authLoading || user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
