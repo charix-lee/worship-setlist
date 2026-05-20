@@ -23,6 +23,17 @@ const MIN_WIDTH = 2;
 const MAX_WIDTH = 20;
 const HIGHLIGHTER_OPACITY = 0.4;
 
+// 태블릿(iPad, Galaxy Tab) 감지
+const isTablet = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  // iPad 감지 (iOS 13+ Safari는 Mac으로 보고하므로 maxTouchPoints 확인)
+  const isIPad = /iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  // Galaxy Tab 감지
+  const isGalaxyTab = /SM-T/.test(ua) || (/Android/.test(ua) && !/Mobile/.test(ua));
+  return isIPad || isGalaxyTab;
+};
+
 export default function DrawingCanvas({
   imageUrl,
   annotations,
@@ -177,6 +188,12 @@ export default function DrawingCanvas({
   // Pointer event handlers
   const handlePointerDown = (e: React.PointerEvent) => {
     if (readOnly) return;
+
+    // 태블릿에서는 펜(스타일러스)으로만 그리기 허용
+    if (isTablet() && e.pointerType !== 'pen') {
+      return; // 손가락 터치는 스크롤/확대용으로 무시
+    }
+
     e.preventDefault();
 
     const point = getPoint(e);
@@ -196,6 +213,10 @@ export default function DrawingCanvas({
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDrawing || readOnly || !currentStroke) return;
+
+    // 태블릿에서는 펜으로만 그리기
+    if (isTablet() && e.pointerType !== 'pen') return;
+
     e.preventDefault();
 
     const point = getPoint(e);

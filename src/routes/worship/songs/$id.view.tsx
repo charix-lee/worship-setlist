@@ -14,6 +14,8 @@ import {
   Calendar,
   MessageSquare,
   Download,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useSongs } from '@/hooks/useSongs';
 import Button from '@/components/Button';
@@ -34,6 +36,7 @@ function SongViewPage() {
   const [loading, setLoading] = useState(true);
   const [lyricsCopied, setLyricsCopied] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [expandedSheets, setExpandedSheets] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -195,12 +198,35 @@ function SongViewPage() {
                 {song.song_sheets.map((sheet) => {
                   const isPdf = sheet.file_url?.toLowerCase().endsWith('.pdf');
                   const isImage = !isPdf;
+                  const isExpanded = expandedSheets.has(sheet.id);
+
+                  const toggleSheet = () => {
+                    setExpandedSheets((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(sheet.id)) {
+                        next.delete(sheet.id);
+                      } else {
+                        next.add(sheet.id);
+                      }
+                      return next;
+                    });
+                  };
 
                   return (
                     <div key={sheet.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
-                        <span className="font-bold text-primary-700 text-lg">{sheet.music_key}</span>
-                        <div className="flex items-center gap-3">
+                      <button
+                        onClick={toggleSheet}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          {isExpanded ? (
+                            <ChevronUp className="w-5 h-5 text-gray-500" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-gray-500" />
+                          )}
+                          <span className="font-bold text-primary-700 text-lg">{sheet.music_key}</span>
+                        </div>
+                        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => downloadSheet(sheet.file_url, sheet.music_key)}
                             className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-primary-600"
@@ -218,15 +244,17 @@ function SongViewPage() {
                             새 탭에서 열기
                           </a>
                         </div>
-                      </div>
+                      </button>
 
-                      <div className="bg-white">
-                        {isPdf ? (
-                          <iframe src={sheet.file_url} className="w-full h-[500px]" title={`${song.title} - ${sheet.music_key}`} />
-                        ) : isImage ? (
-                          <img src={sheet.file_url} alt={`${song.title} - ${sheet.music_key}`} className="w-full" />
-                        ) : null}
-                      </div>
+                      {isExpanded && (
+                        <div className="bg-white border-t border-gray-200">
+                          {isPdf ? (
+                            <iframe src={sheet.file_url} className="w-full h-[500px]" title={`${song.title} - ${sheet.music_key}`} />
+                          ) : isImage ? (
+                            <img src={sheet.file_url} alt={`${song.title} - ${sheet.music_key}`} className="w-full" />
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

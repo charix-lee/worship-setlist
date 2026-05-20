@@ -38,7 +38,7 @@ import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '@/ty
 import { MUSIC_KEYS } from '@/types/database';
 import toast from 'react-hot-toast';
 
-export const Route = createFileRoute('/worship/setlists/$id')({
+export const Route = createFileRoute('/worship/setlists/$id/')({
   component: SetlistEditPage,
 });
 

@@ -18,9 +18,9 @@ import { Route as MyChurchIndexRouteImport } from './routes/my-church/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as WorshipSongsIndexRouteImport } from './routes/worship/songs/index'
 import { Route as WorshipSetlistsIndexRouteImport } from './routes/worship/setlists/index'
-import { Route as WorshipSetlistsIdRouteImport } from './routes/worship/setlists/$id'
+import { Route as WorshipSetlistsIdIndexRouteImport } from './routes/worship/setlists/$id/index'
 import { Route as WorshipSongsIdViewRouteImport } from './routes/worship/songs/$id.view'
-import { Route as WorshipSetlistsIdViewRouteImport } from './routes/worship/setlists/$id.view'
+import { Route as WorshipSetlistsIdViewRouteImport } from './routes/worship/setlists/$id/view'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -67,9 +67,9 @@ const WorshipSetlistsIndexRoute = WorshipSetlistsIndexRouteImport.update({
   path: '/worship/setlists/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorshipSetlistsIdRoute = WorshipSetlistsIdRouteImport.update({
-  id: '/worship/setlists/$id',
-  path: '/worship/setlists/$id',
+const WorshipSetlistsIdIndexRoute = WorshipSetlistsIdIndexRouteImport.update({
+  id: '/worship/setlists/$id/',
+  path: '/worship/setlists/$id/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WorshipSongsIdViewRoute = WorshipSongsIdViewRouteImport.update({
@@ -78,9 +78,9 @@ const WorshipSongsIdViewRoute = WorshipSongsIdViewRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const WorshipSetlistsIdViewRoute = WorshipSetlistsIdViewRouteImport.update({
-  id: '/view',
-  path: '/view',
-  getParentRoute: () => WorshipSetlistsIdRoute,
+  id: '/worship/setlists/$id/view',
+  path: '/worship/setlists/$id/view',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -91,11 +91,11 @@ export interface FileRoutesByFullPath {
   '/onboarding/': typeof OnboardingIndexRoute
   '/plaza/': typeof PlazaIndexRoute
   '/schedule/': typeof ScheduleIndexRoute
-  '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
   '/worship/setlists/': typeof WorshipSetlistsIndexRoute
   '/worship/songs/': typeof WorshipSongsIndexRoute
   '/worship/setlists/$id/view': typeof WorshipSetlistsIdViewRoute
   '/worship/songs/$id/view': typeof WorshipSongsIdViewRoute
+  '/worship/setlists/$id/': typeof WorshipSetlistsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -105,11 +105,11 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingIndexRoute
   '/plaza': typeof PlazaIndexRoute
   '/schedule': typeof ScheduleIndexRoute
-  '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
   '/worship/setlists': typeof WorshipSetlistsIndexRoute
   '/worship/songs': typeof WorshipSongsIndexRoute
   '/worship/setlists/$id/view': typeof WorshipSetlistsIdViewRoute
   '/worship/songs/$id/view': typeof WorshipSongsIdViewRoute
+  '/worship/setlists/$id': typeof WorshipSetlistsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -120,11 +120,11 @@ export interface FileRoutesById {
   '/onboarding/': typeof OnboardingIndexRoute
   '/plaza/': typeof PlazaIndexRoute
   '/schedule/': typeof ScheduleIndexRoute
-  '/worship/setlists/$id': typeof WorshipSetlistsIdRouteWithChildren
   '/worship/setlists/': typeof WorshipSetlistsIndexRoute
   '/worship/songs/': typeof WorshipSongsIndexRoute
   '/worship/setlists/$id/view': typeof WorshipSetlistsIdViewRoute
   '/worship/songs/$id/view': typeof WorshipSongsIdViewRoute
+  '/worship/setlists/$id/': typeof WorshipSetlistsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -136,11 +136,11 @@ export interface FileRouteTypes {
     | '/onboarding/'
     | '/plaza/'
     | '/schedule/'
-    | '/worship/setlists/$id'
     | '/worship/setlists/'
     | '/worship/songs/'
     | '/worship/setlists/$id/view'
     | '/worship/songs/$id/view'
+    | '/worship/setlists/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -150,11 +150,11 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/plaza'
     | '/schedule'
-    | '/worship/setlists/$id'
     | '/worship/setlists'
     | '/worship/songs'
     | '/worship/setlists/$id/view'
     | '/worship/songs/$id/view'
+    | '/worship/setlists/$id'
   id:
     | '__root__'
     | '/'
@@ -164,11 +164,11 @@ export interface FileRouteTypes {
     | '/onboarding/'
     | '/plaza/'
     | '/schedule/'
-    | '/worship/setlists/$id'
     | '/worship/setlists/'
     | '/worship/songs/'
     | '/worship/setlists/$id/view'
     | '/worship/songs/$id/view'
+    | '/worship/setlists/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -179,10 +179,11 @@ export interface RootRouteChildren {
   OnboardingIndexRoute: typeof OnboardingIndexRoute
   PlazaIndexRoute: typeof PlazaIndexRoute
   ScheduleIndexRoute: typeof ScheduleIndexRoute
-  WorshipSetlistsIdRoute: typeof WorshipSetlistsIdRouteWithChildren
   WorshipSetlistsIndexRoute: typeof WorshipSetlistsIndexRoute
   WorshipSongsIndexRoute: typeof WorshipSongsIndexRoute
+  WorshipSetlistsIdViewRoute: typeof WorshipSetlistsIdViewRoute
   WorshipSongsIdViewRoute: typeof WorshipSongsIdViewRoute
+  WorshipSetlistsIdIndexRoute: typeof WorshipSetlistsIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -250,11 +251,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorshipSetlistsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/worship/setlists/$id': {
-      id: '/worship/setlists/$id'
+    '/worship/setlists/$id/': {
+      id: '/worship/setlists/$id/'
       path: '/worship/setlists/$id'
-      fullPath: '/worship/setlists/$id'
-      preLoaderRoute: typeof WorshipSetlistsIdRouteImport
+      fullPath: '/worship/setlists/$id/'
+      preLoaderRoute: typeof WorshipSetlistsIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/worship/songs/$id/view': {
@@ -266,24 +267,13 @@ declare module '@tanstack/react-router' {
     }
     '/worship/setlists/$id/view': {
       id: '/worship/setlists/$id/view'
-      path: '/view'
+      path: '/worship/setlists/$id/view'
       fullPath: '/worship/setlists/$id/view'
       preLoaderRoute: typeof WorshipSetlistsIdViewRouteImport
-      parentRoute: typeof WorshipSetlistsIdRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface WorshipSetlistsIdRouteChildren {
-  WorshipSetlistsIdViewRoute: typeof WorshipSetlistsIdViewRoute
-}
-
-const WorshipSetlistsIdRouteChildren: WorshipSetlistsIdRouteChildren = {
-  WorshipSetlistsIdViewRoute: WorshipSetlistsIdViewRoute,
-}
-
-const WorshipSetlistsIdRouteWithChildren =
-  WorshipSetlistsIdRoute._addFileChildren(WorshipSetlistsIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -293,10 +283,11 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingIndexRoute: OnboardingIndexRoute,
   PlazaIndexRoute: PlazaIndexRoute,
   ScheduleIndexRoute: ScheduleIndexRoute,
-  WorshipSetlistsIdRoute: WorshipSetlistsIdRouteWithChildren,
   WorshipSetlistsIndexRoute: WorshipSetlistsIndexRoute,
   WorshipSongsIndexRoute: WorshipSongsIndexRoute,
+  WorshipSetlistsIdViewRoute: WorshipSetlistsIdViewRoute,
   WorshipSongsIdViewRoute: WorshipSongsIdViewRoute,
+  WorshipSetlistsIdIndexRoute: WorshipSetlistsIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
