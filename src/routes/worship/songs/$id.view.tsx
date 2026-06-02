@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ko';
 import {
   ArrowLeft,
   Music2,
@@ -22,6 +24,8 @@ import Button from '@/components/Button';
 import SongModal from '@/components/SongModal';
 import type { SongWithSheets } from '@/types/database';
 import toast from 'react-hot-toast';
+
+dayjs.locale('ko');
 
 export const Route = createFileRoute('/worship/songs/$id/view')({
   component: SongViewPage,
@@ -69,8 +73,7 @@ function SongViewPage() {
   };
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+    return dayjs(dateStr).format('YYYY년 M월 D일');
   };
 
   const downloadSheet = async (fileUrl: string, musicKey: string) => {

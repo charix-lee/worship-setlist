@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ko';
 import {
   DndContext,
   closestCenter,
@@ -37,6 +39,8 @@ import Button from '@/components/Button';
 import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '@/types/database';
 import { MUSIC_KEYS } from '@/types/database';
 import toast from 'react-hot-toast';
+
+dayjs.locale('ko');
 
 export const Route = createFileRoute('/worship/setlists/$id/')({
   component: SetlistEditPage,
@@ -302,9 +306,7 @@ function SetlistEditPage() {
   });
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} (${days[date.getDay()]})`;
+    return dayjs(dateStr).format('YYYY.MM.DD (ddd)');
   };
 
   if (loading) {

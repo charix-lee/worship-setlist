@@ -1,6 +1,7 @@
-
 import { useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ko';
 import {
   Calendar,
   Plus,
@@ -16,6 +17,8 @@ import Button from '@/components/Button';
 import { SERVICE_TYPES } from '@/types/database';
 import toast from 'react-hot-toast';
 
+dayjs.locale('ko');
+
 export const Route = createFileRoute('/worship/setlists/')({
   component: SetlistsPage,
 });
@@ -25,7 +28,7 @@ function SetlistsPage() {
   const navigate = useNavigate();
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [serviceType, setServiceType] = useState(SERVICE_TYPES[0]);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -64,9 +67,7 @@ function SetlistsPage() {
   };
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} (${days[date.getDay()]})`;
+    return dayjs(dateStr).format('YYYY.MM.DD (ddd)');
   };
 
   const groupedSetlists = setlists.reduce(
@@ -136,7 +137,7 @@ function SetlistsPage() {
                         )}
                         <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
                           <Clock className="w-3 h-3" />
-                          {new Date(setlist.created_at).toLocaleDateString()}
+                          {dayjs(setlist.created_at).format('YYYY. M. D.')}
                         </div>
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>

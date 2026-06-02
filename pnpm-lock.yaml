@@ -23,6 +23,9 @@ importers:
       '@tanstack/react-router':
         specifier: ^1.169.2
         version: 1.169.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      dayjs:
+        specifier: ^1.11.20
+        version: 1.11.20
       html2canvas:
         specifier: ^1.4.1
         version: 1.4.1
@@ -774,6 +777,9 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  dayjs@1.11.20:
+    resolution: {integrity: sha512-YbwwqR/uYpeoP4pu043q+LTDLFBLApUP6VxRihdfNTqu4ubqMlGDLd6ErXhEgsyvY0K6nCs7nggYumAN+9uEuQ==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -2147,6 +2153,8 @@ snapshots:
       utrie: 1.0.2
 
   csstype@3.2.3: {}
+
+  dayjs@1.11.20: {}
 
   debug@4.4.3:
     dependencies:

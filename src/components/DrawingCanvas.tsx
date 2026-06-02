@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Save, Loader2, Highlighter } from 'lucide-react';
 
 type ToolType = 'pen' | 'highlighter' | 'eraser';
+type EraserMode = 'partial' | 'stroke';
 
 interface Stroke {
   points: { x: number; y: number; pressure: number }[];
@@ -17,8 +18,23 @@ interface DrawingCanvasProps {
   readOnly?: boolean;
 }
 
-const PEN_COLORS = ['#000000', '#FF0000', '#0066FF', '#00AA00', '#FF6600', '#9900FF'];
-const HIGHLIGHTER_COLORS = ['#FFFF00', '#00FF00', '#FF69B4', '#00FFFF', '#FFA500'];
+const PEN_COLORS = [
+  '#515C5D', // 차콜 그레이
+  '#F4A9A9', // 코랄 핑크
+  '#A8D5BA', // 세이지 그린
+  '#9DB4C0', // 더스티 블루
+  '#E8B4B8', // 로즈
+  '#B8A9C9', // 라벤더
+  '#F5D6BA', // 피치
+  '#7C9885', // 모스 그린
+];
+const HIGHLIGHTER_COLORS = [
+  '#FEF08A', // 레몬
+  '#BBF7D0', // 민트
+  '#FBCFE8', // 핑크
+  '#A5F3FC', // 스카이
+  '#FED7AA', // 피치
+];
 const MIN_WIDTH = 2;
 const MAX_WIDTH = 20;
 const HIGHLIGHTER_OPACITY = 0.4;
@@ -49,13 +65,15 @@ export default function DrawingCanvas({
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<ToolType>('pen');
-  const [penColor, setPenColor] = useState('#FF0000');
-  const [highlighterColor, setHighlighterColor] = useState('#FFFF00');
+  const [penColor, setPenColor] = useState('#F4A9A9');
+  const [highlighterColor, setHighlighterColor] = useState('#FEF08A');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [highlighterWidth, setHighlighterWidth] = useState(16);
+  const [eraserMode, setEraserMode] = useState<EraserMode>('partial');
+  const [eraserWidth, setEraserWidth] = useState(20);
 
   const currentColor = tool === 'pen' ? penColor : tool === 'highlighter' ? highlighterColor : '#000000';
-  const currentWidth = tool === 'highlighter' ? highlighterWidth : strokeWidth;
+  const currentWidth = tool === 'eraser' ? eraserWidth : tool === 'highlighter' ? highlighterWidth : strokeWidth;
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [savedStrokes, setSavedStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
@@ -121,16 +139,15 @@ export default function DrawingCanvas({
     }
   }, [dimensions]);
 
-  // Redraw canvas
+  // Redraw canvas (drawings only, not the image)
   const redraw = useCallback(() => {
-    if (!ctx || !canvasRef.current || !image) return;
+    if (!ctx || !canvasRef.current) return;
 
     const { width, height } = dimensions;
     if (width === 0 || height === 0) return;
 
-    // Clear and draw image
+    // Clear canvas (transparent background)
     ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(image, 0, 0, width, height);
 
     // Draw all strokes
     const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
@@ -141,13 +158,14 @@ export default function DrawingCanvas({
       ctx.beginPath();
 
       if (stroke.tool === 'eraser') {
+        // Eraser removes only drawn content, not the background image
         ctx.strokeStyle = '#FFFFFF';
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'destination-out';
       } else if (stroke.tool === 'highlighter') {
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = HIGHLIGHTER_OPACITY;
-        ctx.globalCompositeOperation = 'multiply';
+        ctx.globalCompositeOperation = 'source-over';
       } else {
         ctx.strokeStyle = stroke.color;
         ctx.globalAlpha = 1;
@@ -168,11 +186,38 @@ export default function DrawingCanvas({
 
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-  }, [ctx, image, dimensions, strokes, currentStroke]);
+  }, [ctx, dimensions, strokes, currentStroke]);
 
   useEffect(() => {
     redraw();
   }, [redraw]);
+
+  // Find stroke that intersects with given point (for stroke eraser)
+  const findIntersectingStrokeIndex = useCallback((point: { x: number; y: number }) => {
+    for (let i = strokes.length - 1; i >= 0; i--) {
+      const stroke = strokes[i];
+      if (stroke.tool === 'eraser') continue; // Skip eraser strokes
+
+      for (const p of stroke.points) {
+        const dx = (p.x - point.x) * dimensions.width;
+        const dy = (p.y - point.y) * dimensions.height;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Check if point is within eraser radius + stroke width
+        if (distance < eraserWidth / 2 + stroke.width / 2) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  }, [strokes, dimensions, eraserWidth]);
+
+  // Remove stroke at index
+  const removeStrokeAt = useCallback((index: number) => {
+    if (index >= 0 && index < strokes.length) {
+      setStrokes(prev => prev.filter((_, i) => i !== index));
+    }
+  }, [strokes.length]);
 
   // Get point from event
   const getPoint = (e: React.PointerEvent) => {
@@ -199,6 +244,17 @@ export default function DrawingCanvas({
     const point = getPoint(e);
     if (!point) return;
 
+    // 획 지우기 모드
+    if (tool === 'eraser' && eraserMode === 'stroke') {
+      const strokeIndex = findIntersectingStrokeIndex(point);
+      if (strokeIndex >= 0) {
+        removeStrokeAt(strokeIndex);
+      }
+      setIsDrawing(true);
+      (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+      return;
+    }
+
     setIsDrawing(true);
     setCurrentStroke({
       points: [point],
@@ -212,7 +268,7 @@ export default function DrawingCanvas({
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDrawing || readOnly || !currentStroke) return;
+    if (!isDrawing || readOnly) return;
 
     // 태블릿에서는 펜으로만 그리기
     if (isTablet() && e.pointerType !== 'pen') return;
@@ -222,6 +278,17 @@ export default function DrawingCanvas({
     const point = getPoint(e);
     if (!point) return;
 
+    // 획 지우기 모드 - 드래그하면서 여러 획 삭제 가능
+    if (tool === 'eraser' && eraserMode === 'stroke') {
+      const strokeIndex = findIntersectingStrokeIndex(point);
+      if (strokeIndex >= 0) {
+        removeStrokeAt(strokeIndex);
+      }
+      return;
+    }
+
+    if (!currentStroke) return;
+
     setCurrentStroke({
       ...currentStroke,
       points: [...currentStroke.points, point],
@@ -229,8 +296,16 @@ export default function DrawingCanvas({
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isDrawing || !currentStroke) return;
+    if (!isDrawing) return;
     e.preventDefault();
+
+    // 획 지우기 모드는 currentStroke 없이 동작
+    if (tool === 'eraser' && eraserMode === 'stroke') {
+      setIsDrawing(false);
+      return;
+    }
+
+    if (!currentStroke) return;
 
     // Only save strokes with multiple points
     if (currentStroke.points.length >= 2) {
@@ -327,6 +402,19 @@ export default function DrawingCanvas({
                   title={c}
                 />
               ))}
+              <label className="relative w-6 h-6 cursor-pointer">
+                <input
+                  type="color"
+                  value={penColor}
+                  onChange={(e) => setPenColor(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div
+                  className="w-6 h-6 rounded-full border-2 border-dashed border-gray-400 flex items-center justify-center"
+                  style={{ background: `conic-gradient(red, yellow, lime, aqua, blue, magenta, red)` }}
+                  title="직접 선택"
+                />
+              </label>
             </div>
           )}
 
@@ -344,6 +432,73 @@ export default function DrawingCanvas({
                   title={c}
                 />
               ))}
+              <label className="relative w-6 h-6 cursor-pointer">
+                <input
+                  type="color"
+                  value={highlighterColor}
+                  onChange={(e) => setHighlighterColor(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div
+                  className="w-6 h-6 rounded-full border-2 border-dashed border-gray-400 flex items-center justify-center"
+                  style={{ background: `conic-gradient(red, yellow, lime, aqua, blue, magenta, red)` }}
+                  title="직접 선택"
+                />
+              </label>
+            </div>
+          )}
+
+          {/* Eraser mode selection */}
+          {tool === 'eraser' && (
+            <div className="flex bg-white rounded-lg p-0.5 shadow-sm">
+              <button
+                onClick={() => setEraserMode('partial')}
+                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                  eraserMode === 'partial' ? 'bg-primary-100 text-primary-600' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                일부
+              </button>
+              <button
+                onClick={() => setEraserMode('stroke')}
+                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                  eraserMode === 'stroke' ? 'bg-primary-100 text-primary-600' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                획
+              </button>
+            </div>
+          )}
+
+          {/* Eraser size */}
+          {tool === 'eraser' && (
+            <div className="flex items-center gap-1 bg-white rounded-lg px-2 py-1 shadow-sm">
+              <button
+                onClick={() => setEraserWidth(Math.max(10, eraserWidth - 5))}
+                className="p-1 text-gray-600 hover:text-gray-900"
+                disabled={eraserWidth <= 10}
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <div
+                className="w-6 h-6 flex items-center justify-center"
+                title={`크기: ${eraserWidth}`}
+              >
+                <div
+                  className="rounded-full bg-gray-400"
+                  style={{
+                    width: Math.min(eraserWidth * 0.6, 16),
+                    height: Math.min(eraserWidth * 0.6, 16),
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => setEraserWidth(Math.min(40, eraserWidth + 5))}
+                className="p-1 text-gray-600 hover:text-gray-900"
+                disabled={eraserWidth >= 40}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
           )}
 
@@ -441,11 +596,24 @@ export default function DrawingCanvas({
         </div>
       )}
 
-      {/* Canvas */}
+      {/* Canvas with image underneath */}
       <div
         ref={containerRef}
         className="relative bg-white border border-gray-200 rounded-lg overflow-hidden"
       >
+        {/* Background image layer */}
+        {image && (
+          <img
+            src={imageUrl}
+            alt="악보"
+            style={{
+              width: dimensions.width,
+              height: dimensions.height,
+              display: 'block',
+            }}
+          />
+        )}
+        {/* Drawing canvas layer (transparent, on top of image) */}
         <canvas
           ref={canvasRef}
           width={dimensions.width}
@@ -455,7 +623,7 @@ export default function DrawingCanvas({
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="touch-none"
+          className="touch-none absolute top-0 left-0"
           style={{
             width: dimensions.width,
             height: dimensions.height,

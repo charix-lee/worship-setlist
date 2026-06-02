@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ko';
 import {
   Plus,
   Clock,
@@ -26,6 +28,8 @@ import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import { SCHEDULE_ICONS, type Schedule } from '@/types/database';
 import toast from 'react-hot-toast';
+
+dayjs.locale('ko');
 
 export const Route = createFileRoute('/schedule/')({
   component: SchedulePage,
@@ -58,7 +62,7 @@ function getIconComponent(iconId: string) {
 function SchedulePage() {
   const { schedules, loading, createSchedule, updateSchedule, deleteSchedule } = useSchedules();
 
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(dayjs());
   const [modalOpen, setModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
@@ -77,7 +81,7 @@ function SchedulePage() {
   const [isEditing, setIsEditing] = useState(false);
 
   const resetForm = () => {
-    const today = selectedDate || new Date().toISOString().split('T')[0];
+    const today = selectedDate || dayjs().format('YYYY-MM-DD');
     setTitle('');
     setDescription('');
     setIcon('calendar');
@@ -171,28 +175,27 @@ function SchedulePage() {
   };
 
   // 캘린더 관련 함수들
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  const year = currentDate.year();
+  const month = currentDate.month();
 
-  const firstDayOfMonth = new Date(year, month, 1);
-  const lastDayOfMonth = new Date(year, month + 1, 0);
-  const firstDayWeekday = firstDayOfMonth.getDay();
-  const daysInMonth = lastDayOfMonth.getDate();
+  const firstDayOfMonth = currentDate.startOf('month');
+  const firstDayWeekday = firstDayOfMonth.day();
+  const daysInMonth = currentDate.daysInMonth();
 
   const prevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
+    setCurrentDate(currentDate.subtract(1, 'month'));
   };
 
   const nextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
+    setCurrentDate(currentDate.add(1, 'month'));
   };
 
   const goToToday = () => {
-    setCurrentDate(new Date());
+    setCurrentDate(dayjs());
   };
 
   const formatDateKey = (y: number, m: number, d: number) => {
-    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    return dayjs().year(y).month(m).date(d).format('YYYY-MM-DD');
   };
 
   const formatTime = (schedule: Schedule) => {
@@ -201,19 +204,18 @@ function SchedulePage() {
   };
 
   const formatDateRange = (schedule: Schedule) => {
-    const start = new Date(schedule.start_date);
-    const end = new Date(schedule.end_date);
-    const options: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', weekday: 'short' };
+    const start = dayjs(schedule.start_date);
+    const end = dayjs(schedule.end_date);
 
     if (schedule.start_date === schedule.end_date) {
-      return start.toLocaleDateString('ko-KR', { ...options, year: 'numeric' });
+      return start.format('YYYY년 M월 D일 (ddd)');
     }
-    return `${start.toLocaleDateString('ko-KR', options)} - ${end.toLocaleDateString('ko-KR', options)}`;
+    return `${start.format('M월 D일 (ddd)')} - ${end.format('M월 D일 (ddd)')}`;
   };
 
   const isToday = (y: number, m: number, d: number) => {
-    const today = new Date();
-    return today.getFullYear() === y && today.getMonth() === m && today.getDate() === d;
+    const today = dayjs();
+    return today.year() === y && today.month() === m && today.date() === d;
   };
 
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];

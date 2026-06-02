@@ -1,25 +1,26 @@
 import { useState, useEffect } from 'react';
-import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useParams, useNavigate, Link } from '@tanstack/react-router';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ko';
 import {
-  ArrowLeft,
   Download,
   FileText,
   Loader2,
   Music2,
   Edit2,
-  ExternalLink,
   Type,
-  Copy,
-  Check,
-  Pencil,
-  Eye,
+  PenTool,
+  X,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import Button from '@/components/Button';
 import DrawingCanvas from '@/components/DrawingCanvas';
+import LyricsModal from '@/components/LyricsModal';
 import type { SetlistWithItems, SetlistItemWithSong } from '@/types/database';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
+
+dayjs.locale('ko');
 
 export const Route = createFileRoute('/worship/setlists/$id/view')({
   component: SetlistViewPage,
@@ -33,40 +34,19 @@ function SetlistViewPage() {
   const [setlist, setSetlist] = useState<SetlistWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [viewMode, setViewMode] = useState<'sheet' | 'lyrics'>('sheet');
-  const [drawingMode, setDrawingMode] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingItems, setEditingItems] = useState<Set<string>>(new Set());
+  const [lyricsItem, setLyricsItem] = useState<SetlistItemWithSong | null>(null);
 
-  const copyLyrics = async (item: SetlistItemWithSong) => {
-    if (!item.song.lyrics) return;
-    try {
-      await navigator.clipboard.writeText(item.song.lyrics);
-      setCopiedId(item.id);
-      toast.success('가사가 복사되었습니다!');
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch {
-      toast.error('복사 실패');
-    }
-  };
-
-  const copyAllLyrics = async () => {
-    if (!setlist) return;
-    const allLyrics = setlist.setlist_items
-      .filter(item => item.song.lyrics)
-      .map((item, idx) => `[${idx + 1}. ${item.song.title}]\n${item.song.lyrics}`)
-      .join('\n\n---\n\n');
-
-    if (!allLyrics) {
-      toast.error('복사할 가사가 없습니다.');
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(allLyrics);
-      toast.success('전체 가사가 복사되었습니다!');
-    } catch {
-      toast.error('복사 실패');
-    }
+  const toggleEditing = (itemId: string) => {
+    setEditingItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -88,9 +68,7 @@ function SetlistViewPage() {
   }, [id, fetchSetlistById, navigate]);
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${days[date.getDay()]})`;
+    return dayjs(dateStr).format('YYYY년 M월 D일 (ddd)');
   };
 
   const handleSaveAnnotations = async (itemId: string, annotations: string) => {
@@ -112,6 +90,67 @@ function SetlistViewPage() {
     }
   };
 
+  // Create annotation canvas (transparent, drawings only)
+  const createAnnotationCanvas = (
+    annotations: string,
+    width: number,
+    height: number
+  ): HTMLCanvasElement => {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return canvas;
+
+    const HIGHLIGHTER_OPACITY = 0.4;
+
+    try {
+      const strokes = JSON.parse(annotations);
+
+      for (const stroke of strokes) {
+        if (stroke.points.length < 2) continue;
+
+        ctx.beginPath();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        if (stroke.tool === 'eraser') {
+          // Eraser only removes drawings on this canvas, not the image
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'destination-out';
+        } else if (stroke.tool === 'highlighter') {
+          ctx.strokeStyle = stroke.color;
+          ctx.globalAlpha = HIGHLIGHTER_OPACITY;
+          ctx.globalCompositeOperation = 'source-over';
+        } else {
+          ctx.strokeStyle = stroke.color;
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        ctx.lineWidth = stroke.width;
+
+        const [first, ...rest] = stroke.points;
+        ctx.moveTo(first.x * width, first.y * height);
+
+        for (const point of rest) {
+          ctx.lineTo(point.x * width, point.y * height);
+        }
+
+        ctx.stroke();
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    } catch {
+      // Invalid annotations, skip
+    }
+
+    return canvas;
+  };
+
   const handleExportPDF = async () => {
     if (!setlist) return;
 
@@ -122,7 +161,6 @@ function SetlistViewPage() {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
-      const imgWidth = pageWidth - margin * 2;
 
       let isFirstPage = true;
 
@@ -140,57 +178,50 @@ function SetlistViewPage() {
           image.src = sheet.file_url;
         });
 
-        const imgHeight = (img.height * imgWidth) / img.width;
+        // Create combined canvas with image + annotations
+        const combinedCanvas = document.createElement('canvas');
+        combinedCanvas.width = img.width;
+        combinedCanvas.height = img.height;
+        const combinedCtx = combinedCanvas.getContext('2d');
+
+        if (!combinedCtx) continue;
+
+        // Draw base image first
+        combinedCtx.drawImage(img, 0, 0);
+
+        // Create separate annotation canvas and overlay it
+        if (item.annotations) {
+          const annotationCanvas = createAnnotationCanvas(item.annotations, img.width, img.height);
+          combinedCtx.drawImage(annotationCanvas, 0, 0);
+        }
+
+        // Calculate dimensions to fit on one page
+        const maxWidth = pageWidth - margin * 2;
+        const maxHeight = pageHeight - margin * 2;
+        const aspectRatio = img.width / img.height;
+
+        let finalWidth = maxWidth;
+        let finalHeight = finalWidth / aspectRatio;
+
+        // If too tall, scale down to fit height
+        if (finalHeight > maxHeight) {
+          finalHeight = maxHeight;
+          finalWidth = finalHeight * aspectRatio;
+        }
 
         if (!isFirstPage) {
           pdf.addPage();
         }
         isFirstPage = false;
 
-        if (imgHeight <= pageHeight - margin * 2) {
-          pdf.addImage(img, 'PNG', margin, margin, imgWidth, imgHeight);
-        } else {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0);
+        // Center horizontally if scaled down
+        const xOffset = margin + (maxWidth - finalWidth) / 2;
 
-            const pageContentHeight = pageHeight - margin * 2;
-            const sourcePageHeight = (pageContentHeight / imgWidth) * img.width;
-            let yOffset = 0;
-
-            while (yOffset < img.height) {
-              if (yOffset > 0) {
-                pdf.addPage();
-              }
-
-              const remainingHeight = img.height - yOffset;
-              const sliceHeight = Math.min(sourcePageHeight, remainingHeight);
-              const destHeight = (sliceHeight / img.width) * imgWidth;
-
-              const sliceCanvas = document.createElement('canvas');
-              sliceCanvas.width = img.width;
-              sliceCanvas.height = sliceHeight;
-              const sliceCtx = sliceCanvas.getContext('2d');
-              if (sliceCtx) {
-                sliceCtx.drawImage(img, 0, yOffset, img.width, sliceHeight, 0, 0, img.width, sliceHeight);
-                const sliceData = sliceCanvas.toDataURL('image/png');
-                pdf.addImage(sliceData, 'PNG', margin, margin, imgWidth, destHeight);
-              }
-
-              yOffset += sourcePageHeight;
-            }
-          }
-        }
+        const combinedData = combinedCanvas.toDataURL('image/png');
+        pdf.addImage(combinedData, 'PNG', xOffset, margin, finalWidth, finalHeight);
       }
 
-      const date = new Date(setlist.date);
-      const yy = String(date.getFullYear()).slice(-2);
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      const fileName = `${yy}${mm}${dd}_${setlist.service_type}.pdf`;
+      const fileName = `${dayjs(setlist.date).format('YYMMDD')}_${setlist.service_type}.pdf`;
 
       pdf.save(fileName);
       toast.success('PDF가 저장되었습니다.');
@@ -215,45 +246,8 @@ function SetlistViewPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="sticky top-0 bg-white border-b border-gray-200 z-10 print:hidden">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button onClick={() => navigate({ to: '/worship/setlists' })} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="hidden sm:inline">목록으로</span>
-          </button>
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-end">
           <div className="flex items-center gap-2">
-            <div className="flex bg-gray-100 rounded-lg p-0.5">
-              <button
-                onClick={() => setViewMode('sheet')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  viewMode === 'sheet' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-600'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('lyrics')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  viewMode === 'lyrics' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-600'
-                }`}
-              >
-                <Type className="w-4 h-4" />
-              </button>
-            </div>
-
-            {viewMode === 'sheet' && (
-              <button
-                onClick={() => setDrawingMode(!drawingMode)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                  drawingMode
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                }`}
-              >
-                {drawingMode ? <Eye className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-                <span className="text-sm">{drawingMode ? '보기' : '수정하기'}</span>
-              </button>
-            )}
-
             <button
               onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
               className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
@@ -261,26 +255,13 @@ function SetlistViewPage() {
             >
               <Edit2 className="w-5 h-5" />
             </button>
-            {viewMode === 'sheet' ? (
-              <Button onClick={handleExportPDF} loading={exporting} icon={!exporting ? <Download className="w-4 h-4" /> : undefined}>
-                PDF
-              </Button>
-            ) : (
-              <Button onClick={copyAllLyrics} icon={<Copy className="w-4 h-4" />} className="bg-green-600 hover:bg-green-700">
-                전체 복사
-              </Button>
-            )}
+            <Button onClick={handleExportPDF} loading={exporting} icon={!exporting ? <Download className="w-4 h-4" /> : undefined}>
+              PDF
+            </Button>
           </div>
         </div>
       </div>
 
-      {drawingMode && viewMode === 'sheet' && (
-        <div className="bg-primary-50 border-b border-primary-200 print:hidden">
-          <div className="max-w-3xl mx-auto px-4 py-2 text-sm text-primary-700 text-center">
-            ✏️ 그리기 모드 - 악보 위에 그림을 그릴 수 있습니다. 자동 저장됩니다.
-          </div>
-        </div>
-      )}
 
       <div className="max-w-3xl mx-auto p-4 lg:p-6">
         <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8">
@@ -308,16 +289,21 @@ function SetlistViewPage() {
 
                 return (
                   <div key={item.id} className="border-b border-gray-200 pb-8 last:border-b-0 last:pb-0">
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className="w-10 h-10 bg-primary-600 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-8 h-8 bg-primary-600 text-white rounded-[8px] flex items-center justify-center flex-shrink-0 font-bold">
                         {item.position}
                       </div>
-
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="font-semibold text-gray-900 text-lg">{item.song.title}</h3>
-                            <p className="text-gray-500">{item.song.artist || ''}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-end">
+                            <Link
+                              to="/worship/songs/$id/view"
+                              params={{ id: item.song.id }}
+                              className="font-semibold text-gray-900 text-[20px] mr-2 hover:text-primary-600 transition-colors"
+                            >
+                              {item.song.title}
+                            </Link>
+                            <p className="text-gray-500 text-[12px] mb-1">{item.song.artist || ''}</p>
                           </div>
                           {(item.selected_key || displaySheet?.music_key) && (
                             <span className="px-3 py-1 bg-primary-100 text-primary-700 font-bold rounded-lg text-lg flex-shrink-0">
@@ -334,9 +320,40 @@ function SetlistViewPage() {
                       </div>
                     </div>
 
-                    {viewMode === 'sheet' && (
-                      <div className="ml-14">
-                        {displaySheet ? (
+                    <div className="ml-14">
+                      {displaySheet ? (
+                        <>
+                          <div className="flex justify-end gap-2 mb-2 print:hidden">
+                            {item.song.lyrics && (
+                              <button
+                                onClick={() => setLyricsItem(item)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                              >
+                                <Type className="w-4 h-4" />
+                                가사보기
+                              </button>
+                            )}
+                            <button
+                              onClick={() => toggleEditing(item.id)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                editingItems.has(item.id)
+                                  ? 'bg-primary-600 text-white'
+                                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                              }`}
+                            >
+                              {editingItems.has(item.id) ? (
+                                <>
+                                  <X className="w-4 h-4" />
+                                  완료
+                                </>
+                              ) : (
+                                <>
+                                  <PenTool className="w-4 h-4" />
+                                  그리기
+                                </>
+                              )}
+                            </button>
+                          </div>
                           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                             {isPdf ? (
                               <iframe src={displaySheet.file_url} className="w-full h-[600px]" title={`${item.song.title} 악보`} />
@@ -345,64 +362,27 @@ function SetlistViewPage() {
                                 imageUrl={displaySheet.file_url}
                                 annotations={item.annotations || undefined}
                                 onSave={(annotations) => handleSaveAnnotations(item.id, annotations)}
-                                readOnly={!drawingMode}
+                                readOnly={!editingItems.has(item.id)}
                               />
                             ) : null}
-                            <a
-                              href={displaySheet.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-center gap-2 py-2 text-sm text-primary-600 hover:bg-primary-50 transition-colors print:hidden"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                              새 탭에서 열기
-                            </a>
                           </div>
-                        ) : (
-                          <div className="bg-gray-50 rounded-lg p-8 text-center">
-                            <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                            <p className="text-sm text-gray-400">등록된 악보가 없습니다</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {viewMode === 'lyrics' && (
-                      <div className="ml-14">
-                        {item.song.lyrics ? (
-                          <>
-                            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-2">
-                              <pre className="whitespace-pre-wrap font-sans text-gray-800 text-sm leading-relaxed">
-                                {item.song.lyrics}
-                              </pre>
-                            </div>
+                        </>
+                      ) : (
+                        <div className="bg-gray-50 rounded-lg p-8 text-center">
+                          <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-400">등록된 악보가 없습니다</p>
+                          {item.song.lyrics && (
                             <button
-                              onClick={() => copyLyrics(item)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors print:hidden ${
-                                copiedId === item.id ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
+                              onClick={() => setLyricsItem(item)}
+                              className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors mx-auto"
                             >
-                              {copiedId === item.id ? (
-                                <>
-                                  <Check className="w-4 h-4" />
-                                  복사됨
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-4 h-4" />
-                                  가사 복사
-                                </>
-                              )}
+                              <Type className="w-4 h-4" />
+                              가사보기
                             </button>
-                          </>
-                        ) : (
-                          <div className="bg-gray-50 rounded-lg p-8 text-center">
-                            <Type className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                            <p className="text-sm text-gray-400">등록된 가사가 없습니다</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -410,10 +390,21 @@ function SetlistViewPage() {
           )}
 
           <div className="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-400">
-            찬양팀 콘티 · {new Date().toLocaleDateString()}
+            찬양팀 콘티 · {dayjs().format('YYYY. M. D.')}
           </div>
         </div>
       </div>
+
+      {/* 가사 모달 */}
+      {lyricsItem && (
+        <LyricsModal
+          isOpen={!!lyricsItem}
+          onClose={() => setLyricsItem(null)}
+          title={lyricsItem.song.title}
+          artist={lyricsItem.song.artist}
+          lyrics={lyricsItem.song.lyrics || ''}
+        />
+      )}
     </div>
   );
 }

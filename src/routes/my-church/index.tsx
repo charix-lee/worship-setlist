@@ -1,8 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ko';
 import { CalendarDays, ChevronRight, Library, ListMusic, Music, Clock, MapPin } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { useSchedules } from '@/hooks/useSchedules';
 import { useMemo } from 'react';
+
+dayjs.locale('ko');
 
 export const Route = createFileRoute('/my-church/')({
   component: MyChurchPage,
@@ -10,36 +14,28 @@ export const Route = createFileRoute('/my-church/')({
 
 // 이번 주 일요일 날짜 구하기
 function getThisSunday(): string {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
+  const today = dayjs();
+  const dayOfWeek = today.day();
   const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() + daysUntilSunday);
-  return sunday.toISOString().split('T')[0];
+  return today.add(daysUntilSunday, 'day').format('YYYY-MM-DD');
 }
 
 // 이번 주 범위 구하기 (오늘 ~ 일요일)
 function getThisWeekRange(): { start: string; end: string } {
-  const today = new Date();
-  const sunday = new Date(today);
-  const dayOfWeek = today.getDay();
+  const today = dayjs();
+  const dayOfWeek = today.day();
   const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-  sunday.setDate(today.getDate() + daysUntilSunday);
+  const sunday = today.add(daysUntilSunday, 'day');
 
   return {
-    start: today.toISOString().split('T')[0],
-    end: sunday.toISOString().split('T')[0],
+    start: today.format('YYYY-MM-DD'),
+    end: sunday.format('YYYY-MM-DD'),
   };
 }
 
 // 날짜 포맷팅
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-  const dayName = dayNames[date.getDay()];
-  return `${month}/${day}(${dayName})`;
+  return dayjs(dateStr).format('M/D(ddd)');
 }
 
 function MyChurchPage() {
@@ -156,13 +152,13 @@ function MyChurchPage() {
                 <div key={schedule.id} className="p-4 flex items-center gap-3">
                   <div className="w-12 text-center flex-shrink-0">
                     <div className="text-xs text-gray-500">
-                      {new Date(schedule.start_date).getMonth() + 1}월
+                      {dayjs(schedule.start_date).format('M')}월
                     </div>
                     <div className="text-xl font-bold text-gray-900">
-                      {new Date(schedule.start_date).getDate()}
+                      {dayjs(schedule.start_date).format('D')}
                     </div>
                     <div className="text-xs text-gray-400">
-                      {['일', '월', '화', '수', '목', '금', '토'][new Date(schedule.start_date).getDay()]}
+                      {dayjs(schedule.start_date).format('ddd')}
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
