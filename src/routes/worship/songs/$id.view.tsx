@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useParams, useNavigate, Link } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
 import {
@@ -18,11 +18,13 @@ import {
   Download,
   ChevronDown,
   ChevronUp,
+  ListMusic,
 } from 'lucide-react';
 import { useSongs } from '@/hooks/useSongs';
+import { useSetlists } from '@/hooks/useSetlists';
 import Button from '@/components/Button';
 import SongModal from '@/components/SongModal';
-import type { SongWithSheets } from '@/types/database';
+import type { SongWithSheets, Setlist } from '@/types/database';
 import toast from 'react-hot-toast';
 
 dayjs.locale('ko');
@@ -35,12 +37,14 @@ function SongViewPage() {
   const { id } = useParams({ strict: false });
   const navigate = useNavigate();
   const { fetchSongById, updateSong, addSheet, removeSheet } = useSongs();
+  const { fetchSetlistsBySongId } = useSetlists();
 
   const [song, setSong] = useState<SongWithSheets | null>(null);
   const [loading, setLoading] = useState(true);
   const [lyricsCopied, setLyricsCopied] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [expandedSheets, setExpandedSheets] = useState<Set<string>>(new Set());
+  const [relatedSetlists, setRelatedSetlists] = useState<Setlist[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -50,6 +54,9 @@ function SongViewPage() {
       const data = await fetchSongById(id);
       if (data) {
         setSong(data);
+        // 이 곡이 포함된 콘티 목록 조회
+        const setlists = await fetchSetlistsBySongId(id);
+        setRelatedSetlists(setlists);
       } else {
         toast.error('곡을 찾을 수 없습니다.');
         navigate({ to: '/worship/songs' });
@@ -58,7 +65,7 @@ function SongViewPage() {
     };
 
     loadSong();
-  }, [id, fetchSongById, navigate]);
+  }, [id, fetchSongById, fetchSetlistsBySongId, navigate]);
 
   const copyLyrics = async () => {
     if (!song?.lyrics) return;
@@ -265,7 +272,7 @@ function SongViewPage() {
             )}
           </div>
 
-          <div className="p-6 lg:p-8">
+          <div className="p-6 lg:p-8 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">가사</h2>
               {song.lyrics && (
@@ -297,6 +304,42 @@ function SongViewPage() {
             ) : (
               <div className="text-center py-8 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-400">등록된 가사가 없습니다</p>
+              </div>
+            )}
+          </div>
+
+          {/* 이 곡이 사용된 콘티 */}
+          <div className="p-6 lg:p-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <ListMusic className="w-5 h-5" />
+              사용된 콘티 ({relatedSetlists.length})
+            </h2>
+
+            {relatedSetlists.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <ListMusic className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">이 곡이 사용된 콘티가 없습니다</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {relatedSetlists.map((setlist) => (
+                  <Link
+                    key={setlist.id}
+                    to="/worship/setlists/$id/view"
+                    params={{ id: setlist.id }}
+                    className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-5 h-5 text-primary-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900">
+                        {dayjs(setlist.date).format('YYYY년 M월 D일')}
+                      </p>
+                      <p className="text-sm text-gray-500">{setlist.service_type}</p>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </div>

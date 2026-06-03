@@ -11,6 +11,7 @@ import {
   Type,
   PenTool,
   X,
+  Play,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import Button from '@/components/Button';
@@ -36,6 +37,10 @@ function SetlistViewPage() {
   const [exporting, setExporting] = useState(false);
   const [editingItems, setEditingItems] = useState<Set<string>>(new Set());
   const [lyricsItem, setLyricsItem] = useState<SetlistItemWithSong | null>(null);
+
+  // 찬양 모드 (전체화면)
+  const [worshipMode, setWorshipMode] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const toggleEditing = (itemId: string) => {
     setEditingItems((prev) => {
@@ -90,7 +95,7 @@ function SetlistViewPage() {
     }
   };
 
-  // Create annotation canvas (transparent, drawings only)
+  // Create annotation canvas (transparent, drawings + badges)
   const createAnnotationCanvas = (
     annotations: string,
     width: number,
@@ -106,8 +111,13 @@ function SetlistViewPage() {
     const HIGHLIGHTER_OPACITY = 0.4;
 
     try {
-      const strokes = JSON.parse(annotations);
+      const parsed = JSON.parse(annotations);
 
+      // 이전 형식(배열) 또는 새 형식(객체) 지원
+      const strokes = Array.isArray(parsed) ? parsed : (parsed.strokes || []);
+      const badges = Array.isArray(parsed) ? [] : (parsed.badges || []);
+
+      // Draw strokes
       for (const stroke of strokes) {
         if (stroke.points.length < 2) continue;
 
@@ -116,7 +126,6 @@ function SetlistViewPage() {
         ctx.lineJoin = 'round';
 
         if (stroke.tool === 'eraser') {
-          // Eraser only removes drawings on this canvas, not the image
           ctx.strokeStyle = '#FFFFFF';
           ctx.globalAlpha = 1;
           ctx.globalCompositeOperation = 'destination-out';
@@ -144,6 +153,58 @@ function SetlistViewPage() {
 
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
+
+      // Draw badges - 화면 미리보기와 동일한 비율로 렌더링
+      // 화면에서는 약 500px 너비로 표시되므로 그 비율로 스케일
+      const displayWidth = 500;
+      const scale = width / displayWidth;
+
+      for (const badge of badges) {
+        const x = badge.x * width;
+        const y = badge.y * height;
+
+        // 화면에서 보이는 크기 (px) * 스케일 - px-3 py-1.5
+        const paddingX = 12 * scale;
+        const paddingY = 6 * scale;
+        const fontSize = 14 * scale;
+        const radius = 6 * scale;
+
+        ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        const textMetrics = ctx.measureText(badge.label);
+        const textWidth = textMetrics.width;
+
+        const boxWidth = textWidth + paddingX * 2;
+        const boxHeight = fontSize + paddingY * 2;
+
+        // Draw rounded rectangle background
+        const boxX = x - boxWidth / 2;
+        const boxY = y - boxHeight / 2;
+
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = badge.color;
+
+        ctx.beginPath();
+        ctx.moveTo(boxX + radius, boxY);
+        ctx.lineTo(boxX + boxWidth - radius, boxY);
+        ctx.quadraticCurveTo(boxX + boxWidth, boxY, boxX + boxWidth, boxY + radius);
+        ctx.lineTo(boxX + boxWidth, boxY + boxHeight - radius);
+        ctx.quadraticCurveTo(boxX + boxWidth, boxY + boxHeight, boxX + boxWidth - radius, boxY + boxHeight);
+        ctx.lineTo(boxX + radius, boxY + boxHeight);
+        ctx.quadraticCurveTo(boxX, boxY + boxHeight, boxX, boxY + boxHeight - radius);
+        ctx.lineTo(boxX, boxY + radius);
+        ctx.quadraticCurveTo(boxX, boxY, boxX + radius, boxY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Draw text (fully opaque)
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#1F2937';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badge.label, x, y);
+      }
+
+      ctx.globalAlpha = 1;
     } catch {
       // Invalid annotations, skip
     }
@@ -233,6 +294,37 @@ function SetlistViewPage() {
     }
   };
 
+  // 키보드 네비게이션
+  useEffect(() => {
+    if (!worshipMode || !setlist) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        if (currentIndex < setlist.setlist_items.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+        }
+      } else if (e.key === 'ArrowLeft') {
+        if (currentIndex > 0) {
+          setCurrentIndex(prev => prev - 1);
+        }
+      } else if (e.key === 'Escape') {
+        setWorshipMode(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [worshipMode, setlist, currentIndex]);
+
+  const openWorshipMode = () => {
+    setCurrentIndex(0);
+    setWorshipMode(true);
+  };
+
+  const closeWorshipMode = () => {
+    setWorshipMode(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -246,22 +338,26 @@ function SetlistViewPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="sticky top-0 bg-white border-b border-gray-200 z-10 print:hidden">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-end">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
-              className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
-              title="편집"
-            >
-              <Edit2 className="w-5 h-5" />
-            </button>
-            <Button onClick={handleExportPDF} loading={exporting} icon={!exporting ? <Download className="w-4 h-4" /> : undefined}>
-              PDF
-            </Button>
-          </div>
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={openWorshipMode}
+            icon={<Play className="w-4 h-4" />}
+          >
+            찬양
+          </Button>
+          <button
+            onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
+            className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
+            title="편집"
+          >
+            <Edit2 className="w-5 h-5" />
+          </button>
+          <Button onClick={handleExportPDF} loading={exporting} icon={!exporting ? <Download className="w-4 h-4" /> : undefined}>
+            PDF
+          </Button>
         </div>
       </div>
-
 
       <div className="max-w-3xl mx-auto p-4 lg:p-6">
         <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8">
@@ -324,36 +420,36 @@ function SetlistViewPage() {
                       {displaySheet ? (
                         <>
                           <div className="flex justify-end gap-2 mb-2 print:hidden">
-                            {item.song.lyrics && (
-                              <button
-                                onClick={() => setLyricsItem(item)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                              >
-                                <Type className="w-4 h-4" />
-                                가사보기
-                              </button>
-                            )}
-                            <button
-                              onClick={() => toggleEditing(item.id)}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                editingItems.has(item.id)
-                                  ? 'bg-primary-600 text-white'
-                                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                              }`}
-                            >
-                              {editingItems.has(item.id) ? (
-                                <>
-                                  <X className="w-4 h-4" />
-                                  완료
-                                </>
-                              ) : (
-                                <>
-                                  <PenTool className="w-4 h-4" />
-                                  그리기
-                                </>
+                              {item.song.lyrics && (
+                                <button
+                                  onClick={() => setLyricsItem(item)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                                >
+                                  <Type className="w-4 h-4" />
+                                  가사보기
+                                </button>
                               )}
-                            </button>
-                          </div>
+                              <button
+                                onClick={() => toggleEditing(item.id)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                  editingItems.has(item.id)
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                                }`}
+                              >
+                                {editingItems.has(item.id) ? (
+                                  <>
+                                    <X className="w-4 h-4" />
+                                    완료
+                                  </>
+                                ) : (
+                                  <>
+                                    <PenTool className="w-4 h-4" />
+                                    그리기
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                             {isPdf ? (
                               <iframe src={displaySheet.file_url} className="w-full h-[600px]" title={`${item.song.title} 악보`} />
@@ -404,6 +500,113 @@ function SetlistViewPage() {
           artist={lyricsItem.song.artist}
           lyrics={lyricsItem.song.lyrics || ''}
         />
+      )}
+
+      {/* 찬양 모드 (전체화면) */}
+      {worshipMode && setlist && setlist.setlist_items.length > 0 && (
+        <div
+          className="fixed inset-0 bg-black z-50 flex flex-col touch-none"
+          onTouchStart={(e) => {
+            const touch = e.touches[0];
+            (e.currentTarget as HTMLElement).dataset.touchStartX = String(touch.clientX);
+          }}
+          onTouchEnd={(e) => {
+            const startX = Number((e.currentTarget as HTMLElement).dataset.touchStartX);
+            const endX = e.changedTouches[0].clientX;
+            const diff = startX - endX;
+
+            if (Math.abs(diff) > 50) {
+              if (diff > 0 && currentIndex < setlist.setlist_items.length - 1) {
+                setCurrentIndex(currentIndex + 1);
+              } else if (diff < 0 && currentIndex > 0) {
+                setCurrentIndex(currentIndex - 1);
+              }
+            }
+          }}
+        >
+          {/* 상단 바 */}
+          <div className="flex items-center justify-between px-4 py-3 bg-black/80">
+            <div className="flex items-center gap-3 text-white">
+              <span className="px-2 py-1 bg-primary-600 rounded text-sm font-bold">
+                {currentIndex + 1} / {setlist.setlist_items.length}
+              </span>
+              <span className="font-medium">
+                {setlist.setlist_items[currentIndex]?.song.title}
+              </span>
+              {setlist.setlist_items[currentIndex]?.selected_key && (
+                <span className="px-2 py-0.5 bg-white/20 rounded text-sm">
+                  {setlist.setlist_items[currentIndex]?.selected_key}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={closeWorshipMode}
+              className="p-2 text-white/70 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* 악보 영역 */}
+          <div className="flex-1 flex items-center justify-center bg-white overflow-hidden relative">
+            {/* 이전 클릭 영역 */}
+            {currentIndex > 0 && (
+              <button
+                onClick={() => setCurrentIndex(currentIndex - 1)}
+                className="absolute left-0 top-0 bottom-0 w-1/4 z-10 cursor-w-resize opacity-0 hover:opacity-100 hover:bg-black/5 transition-opacity flex items-center justify-start pl-4"
+              >
+                <span className="text-gray-400 text-4xl">‹</span>
+              </button>
+            )}
+
+            {/* 다음 클릭 영역 */}
+            {currentIndex < setlist.setlist_items.length - 1 && (
+              <button
+                onClick={() => setCurrentIndex(currentIndex + 1)}
+                className="absolute right-0 top-0 bottom-0 w-1/4 z-10 cursor-e-resize opacity-0 hover:opacity-100 hover:bg-black/5 transition-opacity flex items-center justify-end pr-4"
+              >
+                <span className="text-gray-400 text-4xl">›</span>
+              </button>
+            )}
+
+            {(() => {
+              const item = setlist.setlist_items[currentIndex];
+              const sheet = item?.selected_key
+                ? item.song.song_sheets.find((s) => s.music_key === item.selected_key)
+                : item?.song.song_sheets[0];
+              const displaySheet = sheet || item?.song.song_sheets[0];
+
+              if (!displaySheet) {
+                return (
+                  <div className="text-center text-gray-400">
+                    <FileText className="w-16 h-16 mx-auto mb-4" />
+                    <p>악보가 없습니다</p>
+                  </div>
+                );
+              }
+
+              const isPdf = displaySheet.file_url?.toLowerCase().endsWith('.pdf');
+
+              if (isPdf) {
+                return (
+                  <iframe
+                    src={displaySheet.file_url}
+                    className="w-full h-full"
+                    title={`${item.song.title} 악보`}
+                  />
+                );
+              }
+
+              return (
+                <img
+                  src={displaySheet.file_url}
+                  alt={`${item.song.title} 악보`}
+                  className="max-w-full max-h-full object-contain"
+                />
+              );
+            })()}
+          </div>
+        </div>
       )}
     </div>
   );

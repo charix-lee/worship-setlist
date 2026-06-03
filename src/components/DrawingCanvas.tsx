@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Save, Loader2, Highlighter } from 'lucide-react';
+import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Save, Loader2, Highlighter, Tag } from 'lucide-react';
 
-type ToolType = 'pen' | 'highlighter' | 'eraser';
+type ToolType = 'pen' | 'highlighter' | 'eraser' | 'badge';
 type EraserMode = 'partial' | 'stroke';
 
 interface Stroke {
@@ -9,6 +9,14 @@ interface Stroke {
   color: string;
   width: number;
   tool: ToolType;
+}
+
+interface Badge {
+  id: string;
+  x: number; // 0-1 normalized
+  y: number; // 0-1 normalized
+  label: string;
+  color: string;
 }
 
 interface DrawingCanvasProps {
@@ -38,6 +46,19 @@ const HIGHLIGHTER_COLORS = [
 const MIN_WIDTH = 2;
 const MAX_WIDTH = 20;
 const HIGHLIGHTER_OPACITY = 0.4;
+
+// 뱃지 라벨
+const BADGE_LABELS = ['A', 'B', 'C', "A'", "B'", "C'", 'Intro', 'Verse', 'Chorus', 'Bridge', 'Outro'];
+
+// 뱃지 파스텔 색상 (50% 투명도 적용됨)
+const BADGE_COLORS = [
+  '#FFB3BA', // 파스텔 핑크
+  '#BAFFC9', // 파스텔 그린
+  '#BAE1FF', // 파스텔 블루
+  '#FFFFBA', // 파스텔 옐로우
+  '#FFDFba', // 파스텔 오렌지
+  '#E0BBE4', // 파스텔 퍼플
+];
 
 // 태블릿(iPad, Galaxy Tab) 감지
 const isTablet = (): boolean => {
@@ -79,26 +100,48 @@ export default function DrawingCanvas({
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Badge state
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [savedBadges, setSavedBadges] = useState<Badge[]>([]);
+  const [selectedBadgeLabel, setSelectedBadgeLabel] = useState('A');
+  const [selectedBadgeColor, setSelectedBadgeColor] = useState(BADGE_COLORS[0]);
+  const [, setDraggingBadge] = useState<string | null>(null);
+
   // Canvas dimensions
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   // Check if there are unsaved changes
-  const hasChanges = JSON.stringify(strokes) !== JSON.stringify(savedStrokes);
+  const hasChanges = JSON.stringify(strokes) !== JSON.stringify(savedStrokes) ||
+                     JSON.stringify(badges) !== JSON.stringify(savedBadges);
 
   // Load existing annotations
   useEffect(() => {
     if (annotations) {
       try {
         const parsed = JSON.parse(annotations);
-        setStrokes(parsed);
-        setSavedStrokes(parsed);
+        // 이전 형식(배열) 또는 새 형식(객체) 지원
+        if (Array.isArray(parsed)) {
+          setStrokes(parsed);
+          setSavedStrokes(parsed);
+          setBadges([]);
+          setSavedBadges([]);
+        } else {
+          setStrokes(parsed.strokes || []);
+          setSavedStrokes(parsed.strokes || []);
+          setBadges(parsed.badges || []);
+          setSavedBadges(parsed.badges || []);
+        }
       } catch {
         setStrokes([]);
         setSavedStrokes([]);
+        setBadges([]);
+        setSavedBadges([]);
       }
     } else {
       setStrokes([]);
       setSavedStrokes([]);
+      setBadges([]);
+      setSavedBadges([]);
     }
   }, [annotations]);
 
@@ -244,6 +287,12 @@ export default function DrawingCanvas({
     const point = getPoint(e);
     if (!point) return;
 
+    // 뱃지 배치 모드
+    if (tool === 'badge') {
+      addBadge(point.x, point.y);
+      return;
+    }
+
     // 획 지우기 모드
     if (tool === 'eraser' && eraserMode === 'stroke') {
       const strokeIndex = findIntersectingStrokeIndex(point);
@@ -260,7 +309,7 @@ export default function DrawingCanvas({
       points: [point],
       color: currentColor,
       width: currentWidth,
-      tool,
+      tool: tool as 'pen' | 'highlighter' | 'eraser',
     });
 
     // Capture pointer for smooth drawing
@@ -322,8 +371,10 @@ export default function DrawingCanvas({
 
     setSaving(true);
     try {
-      await onSave(JSON.stringify(strokes));
+      // 새 형식으로 저장 (strokes + badges)
+      await onSave(JSON.stringify({ strokes, badges }));
       setSavedStrokes(strokes);
+      setSavedBadges(badges);
     } catch (error) {
       console.error('Save failed:', error);
     } finally {
@@ -331,17 +382,46 @@ export default function DrawingCanvas({
     }
   };
 
-  // Undo last stroke
+  // Undo last stroke or badge
   const handleUndo = () => {
-    if (strokes.length === 0) return;
-    setStrokes(prev => prev.slice(0, -1));
+    if (strokes.length === 0 && badges.length === 0) return;
+
+    // 가장 최근 작업 취소 (뱃지가 더 최근이면 뱃지 취소)
+    if (badges.length > 0 && (strokes.length === 0 || badges.length >= strokes.length)) {
+      setBadges(prev => prev.slice(0, -1));
+    } else {
+      setStrokes(prev => prev.slice(0, -1));
+    }
   };
 
   // Clear all
   const handleClear = () => {
-    if (strokes.length === 0) return;
-    if (!confirm('모든 그림을 지우시겠습니까?')) return;
+    if (strokes.length === 0 && badges.length === 0) return;
+    if (!confirm('모든 그림과 뱃지를 지우시겠습니까?')) return;
     setStrokes([]);
+    setBadges([]);
+  };
+
+  // Add badge at position
+  const addBadge = (x: number, y: number) => {
+    const newBadge: Badge = {
+      id: `badge-${Date.now()}`,
+      x,
+      y,
+      label: selectedBadgeLabel,
+      color: selectedBadgeColor,
+    };
+    setBadges(prev => [...prev, newBadge]);
+  };
+
+  // Remove badge by id
+  const removeBadge = (id: string) => {
+    setBadges(prev => prev.filter(b => b.id !== id));
+  };
+
+  // Update badge position
+  const updateBadgePosition = (id: string, x: number, y: number) => {
+    setBadges(prev => prev.map(b => b.id === id ? { ...b, x, y } : b));
   };
 
   if (!imageLoaded) {
@@ -385,6 +465,15 @@ export default function DrawingCanvas({
               title="지우개"
             >
               <Eraser className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setTool('badge')}
+              className={`p-2 rounded-md transition-colors ${
+                tool === 'badge' ? 'bg-primary-100 text-primary-600' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="뱃지"
+            >
+              <Tag className="w-5 h-5" />
             </button>
           </div>
 
@@ -445,6 +534,42 @@ export default function DrawingCanvas({
                   title="직접 선택"
                 />
               </label>
+            </div>
+          )}
+
+          {/* Badge label selection */}
+          {tool === 'badge' && (
+            <div className="flex items-center gap-1 bg-white rounded-lg p-1 shadow-sm flex-wrap">
+              {BADGE_LABELS.map((label) => (
+                <button
+                  key={label}
+                  onClick={() => setSelectedBadgeLabel(label)}
+                  className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                    selectedBadgeLabel === label
+                      ? 'bg-primary-100 text-primary-600'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Badge color selection */}
+          {tool === 'badge' && (
+            <div className="flex items-center gap-1 bg-white rounded-lg p-1 shadow-sm">
+              {BADGE_COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setSelectedBadgeColor(c)}
+                  className={`w-6 h-6 rounded border-2 transition-transform ${
+                    selectedBadgeColor === c ? 'border-gray-800 scale-110' : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: c, opacity: 0.7 }}
+                  title={c}
+                />
+              ))}
             </div>
           )}
 
@@ -552,7 +677,7 @@ export default function DrawingCanvas({
           <div className="flex items-center gap-1">
             <button
               onClick={handleUndo}
-              disabled={strokes.length === 0}
+              disabled={strokes.length === 0 && badges.length === 0}
               className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
               title="실행 취소"
             >
@@ -560,7 +685,7 @@ export default function DrawingCanvas({
             </button>
             <button
               onClick={handleClear}
-              disabled={strokes.length === 0}
+              disabled={strokes.length === 0 && badges.length === 0}
               className="p-2 text-gray-600 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
               title="전체 지우기"
             >
@@ -627,9 +752,65 @@ export default function DrawingCanvas({
           style={{
             width: dimensions.width,
             height: dimensions.height,
-            cursor: readOnly ? 'default' : (tool === 'pen' ? 'crosshair' : 'cell')
+            cursor: readOnly ? 'default' : (tool === 'badge' ? 'copy' : tool === 'pen' ? 'crosshair' : 'cell')
           }}
         />
+
+        {/* Badge layer */}
+        {badges.map((badge) => (
+          <div
+            key={badge.id}
+            className={`absolute select-none ${!readOnly ? 'cursor-move' : ''}`}
+            style={{
+              left: badge.x * dimensions.width,
+              top: badge.y * dimensions.height,
+              transform: 'translate(-50%, -50%)',
+            }}
+            draggable={false}
+            onPointerDown={(e) => {
+              if (readOnly) return;
+              e.stopPropagation();
+
+              // 지우개 모드면 뱃지 삭제
+              if (tool === 'eraser') {
+                removeBadge(badge.id);
+                return;
+              }
+
+              // 드래그 시작
+              setDraggingBadge(badge.id);
+              const rect = containerRef.current?.getBoundingClientRect();
+              if (!rect) return;
+
+              const handleMove = (moveE: PointerEvent) => {
+                const newX = (moveE.clientX - rect.left) / dimensions.width;
+                const newY = (moveE.clientY - rect.top) / dimensions.height;
+                updateBadgePosition(badge.id,
+                  Math.max(0, Math.min(1, newX)),
+                  Math.max(0, Math.min(1, newY))
+                );
+              };
+
+              const handleUp = () => {
+                setDraggingBadge(null);
+                document.removeEventListener('pointermove', handleMove);
+                document.removeEventListener('pointerup', handleUp);
+              };
+
+              document.addEventListener('pointermove', handleMove);
+              document.addEventListener('pointerup', handleUp);
+            }}
+          >
+            <div
+              className="px-3 py-1.5 rounded-md text-sm font-bold text-gray-800 whitespace-nowrap shadow-sm"
+              style={{
+                backgroundColor: `${badge.color}99`, // 60% opacity hex
+              }}
+            >
+              {badge.label}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

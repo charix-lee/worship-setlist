@@ -186,6 +186,34 @@ export function useSetlists() {
     }
   };
 
+  // 특정 곡이 포함된 콘티 목록 조회
+  const fetchSetlistsBySongId = useCallback(async (songId: string): Promise<Setlist[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('setlist_items')
+        .select('setlist:setlists(*)')
+        .eq('song_id', songId);
+
+      if (error) throw error;
+      if (!data || data.length === 0) return [];
+
+      // 중복 제거 및 날짜순 정렬
+      const setlistMap = new Map<string, Setlist>();
+      for (const item of data) {
+        const setlist = item.setlist as unknown as Setlist;
+        if (setlist && !setlistMap.has(setlist.id)) {
+          setlistMap.set(setlist.id, setlist);
+        }
+      }
+
+      return Array.from(setlistMap.values())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    } catch (err) {
+      console.error('곡이 포함된 콘티 조회 실패:', err);
+      return [];
+    }
+  }, []);
+
   useEffect(() => {
     fetchSetlists();
   }, [fetchSetlists]);
@@ -196,6 +224,7 @@ export function useSetlists() {
     error,
     fetchSetlists,
     fetchSetlistById,
+    fetchSetlistsBySongId,
     createSetlist,
     updateSetlist,
     deleteSetlist,

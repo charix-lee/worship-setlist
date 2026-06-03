@@ -25,12 +25,12 @@ import {
   GripVertical,
   Trash2,
   FileText,
-  Download,
   Loader2,
   Search,
   Music2,
   X,
   Save,
+  PenTool,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { useSongs } from '@/hooks/useSongs';
@@ -336,9 +336,9 @@ function SetlistEditPage() {
           <Button
             variant="secondary"
             onClick={() => navigate({ to: '/worship/setlists/$id/view', params: { id: id! } })}
-            icon={<Download className="w-4 h-4" />}
+            icon={<PenTool className="w-4 h-4" />}
           >
-            <span className="hidden sm:inline">PDF</span>
+            <span className="hidden sm:inline">송폼</span>
           </Button>
           <Button variant="primary" onClick={handleSave} loading={saving} disabled={!hasChanges} icon={<Save className="w-4 h-4" />}>
             저장
