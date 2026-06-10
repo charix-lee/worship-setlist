@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createFileRoute, useParams, useNavigate, Link } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
@@ -22,6 +22,191 @@ import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 
 dayjs.locale('ko');
+
+const HIGHLIGHTER_OPACITY = 0.4;
+
+// 찬양 모드용 악보 컴포넌트 (이미지 + annotations 오버레이)
+function WorshipModeSheet({
+  imageUrl,
+  annotations,
+  title
+}: {
+  imageUrl: string;
+  annotations?: string | null;
+  title: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  // 이미지 로드
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => setImage(img);
+    img.src = imageUrl;
+  }, [imageUrl]);
+
+  // 컨테이너 크기에 맞춰 dimensions 계산
+  useEffect(() => {
+    if (!containerRef.current || !image) return;
+
+    const container = containerRef.current;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    const imgAspect = image.width / image.height;
+    const containerAspect = containerWidth / containerHeight;
+
+    let width: number, height: number;
+    if (imgAspect > containerAspect) {
+      width = containerWidth;
+      height = containerWidth / imgAspect;
+    } else {
+      height = containerHeight;
+      width = containerHeight * imgAspect;
+    }
+
+    setDimensions({ width, height });
+  }, [image]);
+
+  // annotations 그리기
+  const drawAnnotations = useCallback(() => {
+    if (!canvasRef.current || dimensions.width === 0) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 항상 먼저 canvas를 clear
+    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+
+    // annotations가 없으면 clear만 하고 종료
+    if (!annotations) return;
+
+    try {
+      const parsed = JSON.parse(annotations);
+      const strokes = Array.isArray(parsed) ? parsed : (parsed.strokes || []);
+      const badges = Array.isArray(parsed) ? [] : (parsed.badges || []);
+
+      // Draw strokes
+      for (const stroke of strokes) {
+        if (stroke.points.length < 2) continue;
+
+        ctx.beginPath();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        if (stroke.tool === 'eraser') {
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'destination-out';
+        } else if (stroke.tool === 'highlighter') {
+          ctx.strokeStyle = stroke.color;
+          ctx.globalAlpha = HIGHLIGHTER_OPACITY;
+          ctx.globalCompositeOperation = 'source-over';
+        } else {
+          ctx.strokeStyle = stroke.color;
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        ctx.lineWidth = stroke.width;
+
+        const [first, ...rest] = stroke.points;
+        ctx.moveTo(first.x * dimensions.width, first.y * dimensions.height);
+
+        for (const point of rest) {
+          ctx.lineTo(point.x * dimensions.width, point.y * dimensions.height);
+        }
+
+        ctx.stroke();
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+
+      // Draw badges
+      for (const badge of badges) {
+        const x = badge.x * dimensions.width;
+        const y = badge.y * dimensions.height;
+
+        const paddingX = 12;
+        const paddingY = 6;
+        const fontSize = 14;
+        const radius = 6;
+
+        ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        const textMetrics = ctx.measureText(badge.label);
+        const textWidth = textMetrics.width;
+
+        const boxWidth = textWidth + paddingX * 2;
+        const boxHeight = fontSize + paddingY * 2;
+
+        const boxX = x - boxWidth / 2;
+        const boxY = y - boxHeight / 2;
+
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = badge.color;
+
+        ctx.beginPath();
+        ctx.moveTo(boxX + radius, boxY);
+        ctx.lineTo(boxX + boxWidth - radius, boxY);
+        ctx.quadraticCurveTo(boxX + boxWidth, boxY, boxX + boxWidth, boxY + radius);
+        ctx.lineTo(boxX + boxWidth, boxY + boxHeight - radius);
+        ctx.quadraticCurveTo(boxX + boxWidth, boxY + boxHeight, boxX + boxWidth - radius, boxY + boxHeight);
+        ctx.lineTo(boxX + radius, boxY + boxHeight);
+        ctx.quadraticCurveTo(boxX, boxY + boxHeight, boxX, boxY + boxHeight - radius);
+        ctx.lineTo(boxX, boxY + radius);
+        ctx.quadraticCurveTo(boxX, boxY, boxX + radius, boxY);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#1F2937';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badge.label, x, y);
+      }
+
+      ctx.globalAlpha = 1;
+    } catch {
+      // Invalid annotations
+    }
+  }, [annotations, dimensions]);
+
+  useEffect(() => {
+    drawAnnotations();
+  }, [drawAnnotations]);
+
+  if (!image) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="w-full h-full flex items-center justify-center">
+      <div className="relative" style={{ width: dimensions.width, height: dimensions.height }}>
+        <img
+          src={imageUrl}
+          alt={`${title} 악보`}
+          style={{ width: dimensions.width, height: dimensions.height }}
+          className="block"
+        />
+        <canvas
+          ref={canvasRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          className="absolute top-0 left-0 pointer-events-none"
+        />
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute('/worship/setlists/$id/view')({
   component: SetlistViewPage,
@@ -526,22 +711,27 @@ function SetlistViewPage() {
         >
           {/* 상단 바 */}
           <div className="flex items-center justify-between px-4 py-3 bg-black/80">
-            <div className="flex items-center gap-3 text-white">
-              <span className="px-2 py-1 bg-primary-600 rounded text-sm font-bold">
+            <div className="flex items-center gap-3 text-white flex-1 min-w-0">
+              <span className="px-2 py-1 bg-primary-600 rounded text-sm font-bold flex-shrink-0">
                 {currentIndex + 1} / {setlist.setlist_items.length}
               </span>
-              <span className="font-medium">
+              <span className="font-medium flex-shrink-0">
                 {setlist.setlist_items[currentIndex]?.song.title}
               </span>
               {setlist.setlist_items[currentIndex]?.selected_key && (
-                <span className="px-2 py-0.5 bg-white/20 rounded text-sm">
+                <span className="px-2 py-0.5 bg-white/20 rounded text-sm flex-shrink-0">
                   {setlist.setlist_items[currentIndex]?.selected_key}
+                </span>
+              )}
+              {setlist.setlist_items[currentIndex]?.note && (
+                <span className="px-2 py-0.5 bg-yellow-500/80 text-gray-900 rounded text-sm truncate">
+                  {setlist.setlist_items[currentIndex]?.note}
                 </span>
               )}
             </div>
             <button
               onClick={closeWorshipMode}
-              className="p-2 text-white/70 hover:text-white transition-colors"
+              className="p-2 text-white/70 hover:text-white transition-colors flex-shrink-0"
             >
               <X className="w-6 h-6" />
             </button>
@@ -598,10 +788,11 @@ function SetlistViewPage() {
               }
 
               return (
-                <img
-                  src={displaySheet.file_url}
-                  alt={`${item.song.title} 악보`}
-                  className="max-w-full max-h-full object-contain"
+                <WorshipModeSheet
+                  key={item.id}
+                  imageUrl={displaySheet.file_url}
+                  annotations={item.annotations}
+                  title={item.song.title}
                 />
               );
             })()}
