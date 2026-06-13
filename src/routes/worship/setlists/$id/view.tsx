@@ -12,6 +12,7 @@ import {
   PenTool,
   X,
   Play,
+  ExternalLink,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import Button from '@/components/Button';
@@ -605,6 +606,17 @@ function SetlistViewPage() {
                       {displaySheet ? (
                         <>
                           <div className="flex justify-end gap-2 mb-2 print:hidden">
+                              {item.song.youtube_url && (
+                                <a
+                                  href={item.song.youtube_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                  유튜브
+                                </a>
+                              )}
                               {item.song.lyrics && (
                                 <button
                                   onClick={() => setLyricsItem(item)}
@@ -652,15 +664,28 @@ function SetlistViewPage() {
                         <div className="bg-gray-50 rounded-lg p-8 text-center">
                           <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                           <p className="text-sm text-gray-400">등록된 악보가 없습니다</p>
-                          {item.song.lyrics && (
-                            <button
-                              onClick={() => setLyricsItem(item)}
-                              className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors mx-auto"
-                            >
-                              <Type className="w-4 h-4" />
-                              가사보기
-                            </button>
-                          )}
+                          <div className="mt-3 flex items-center justify-center gap-2">
+                            {item.song.youtube_url && (
+                              <a
+                                href={item.song.youtube_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                유튜브
+                              </a>
+                            )}
+                            {item.song.lyrics && (
+                              <button
+                                onClick={() => setLyricsItem(item)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                              >
+                                <Type className="w-4 h-4" />
+                                가사보기
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
