@@ -774,10 +774,14 @@ export default function DrawingCanvas({
             alt="악보"
             tabIndex={-1}
             draggable={false}
+            onContextMenu={(e) => e.preventDefault()}
+            className="select-none"
             style={{
               width: dimensions.width,
               height: dimensions.height,
               display: 'block',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
             }}
           />
         )}
