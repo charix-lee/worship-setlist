@@ -772,6 +772,8 @@ export default function DrawingCanvas({
           <img
             src={imageUrl}
             alt="악보"
+            tabIndex={-1}
+            draggable={false}
             style={{
               width: dimensions.width,
               height: dimensions.height,
@@ -784,6 +786,7 @@ export default function DrawingCanvas({
           ref={canvasRef}
           width={dimensions.width}
           height={dimensions.height}
+          tabIndex={-1}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
