@@ -110,6 +110,9 @@ export default function DrawingCanvas({
   // Canvas dimensions
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
+  // 멀티터치 감지용 (확대 시 그리기 취소)
+  const activePointers = useRef<Set<number>>(new Set());
+
   // Check if there are unsaved changes
   const hasChanges = JSON.stringify(strokes) !== JSON.stringify(savedStrokes) ||
                      JSON.stringify(badges) !== JSON.stringify(savedBadges);
@@ -273,9 +276,26 @@ export default function DrawingCanvas({
     };
   };
 
+  // 멀티터치 시 그리기 취소
+  const cancelDrawing = useCallback(() => {
+    setCurrentStroke(null);
+    setIsDrawing(false);
+  }, []);
+
   // Pointer event handlers
   const handlePointerDown = (e: React.PointerEvent) => {
     if (readOnly) return;
+
+    // 터치인 경우 포인터 추적
+    if (e.pointerType === 'touch') {
+      activePointers.current.add(e.pointerId);
+
+      // 두 손가락 이상이면 그리기 취소 (확대/스크롤용)
+      if (activePointers.current.size >= 2) {
+        cancelDrawing();
+        return;
+      }
+    }
 
     // 태블릿에서는 펜(스타일러스)으로만 그리기 허용
     if (isTablet() && e.pointerType !== 'pen') {
@@ -319,6 +339,12 @@ export default function DrawingCanvas({
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDrawing || readOnly) return;
 
+    // 멀티터치 중이면 그리기 취소
+    if (e.pointerType === 'touch' && activePointers.current.size >= 2) {
+      cancelDrawing();
+      return;
+    }
+
     // 태블릿에서는 펜으로만 그리기
     if (isTablet() && e.pointerType !== 'pen') return;
 
@@ -345,6 +371,11 @@ export default function DrawingCanvas({
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    // 터치인 경우 포인터 제거
+    if (e.pointerType === 'touch') {
+      activePointers.current.delete(e.pointerId);
+    }
+
     if (!isDrawing) return;
     e.preventDefault();
 
@@ -363,6 +394,16 @@ export default function DrawingCanvas({
 
     setCurrentStroke(null);
     setIsDrawing(false);
+  };
+
+  // 포인터가 캔버스를 벗어났을 때도 포인터 제거
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') {
+      activePointers.current.delete(e.pointerId);
+    }
+    if (isDrawing) {
+      cancelDrawing();
+    }
   };
 
   // Save to database
@@ -746,8 +787,8 @@ export default function DrawingCanvas({
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-          onPointerCancel={handlePointerUp}
+          onPointerLeave={handlePointerCancel}
+          onPointerCancel={handlePointerCancel}
           className="touch-none absolute top-0 left-0"
           style={{
             width: dimensions.width,
