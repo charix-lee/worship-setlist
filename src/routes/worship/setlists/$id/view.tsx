@@ -715,7 +715,7 @@ function SetlistViewPage() {
       {/* 찬양 모드 (전체화면) */}
       {worshipMode && setlist && setlist.setlist_items.length > 0 && (
         <div
-          className="fixed inset-0 bg-black z-50 flex flex-col touch-none"
+          className="fixed inset-0 bg-black z-[100] flex flex-col touch-none"
           onTouchStart={(e) => {
             const touch = e.touches[0];
             (e.currentTarget as HTMLElement).dataset.touchStartX = String(touch.clientX);

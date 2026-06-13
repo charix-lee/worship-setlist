@@ -789,7 +789,7 @@ export default function DrawingCanvas({
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerCancel}
           onPointerCancel={handlePointerCancel}
-          className="touch-none absolute top-0 left-0"
+          className={`absolute top-0 left-0 ${readOnly ? 'touch-auto pointer-events-none' : 'touch-none'}`}
           style={{
             width: dimensions.width,
             height: dimensions.height,
