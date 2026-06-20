@@ -36,7 +36,7 @@ function RootComponent() {
       {showKakaoBanner && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-50 border-b border-yellow-200 px-4 py-3 z-[9999] flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Chrome className="w-5 h-5 text-yellow-700 flex-shrink-0" />
+            <Globe className="w-5 h-5 text-yellow-700 flex-shrink-0" />
             <p className="text-sm text-yellow-800 font-medium">
               크롬에서 더 나은 경험을 제공합니다
             </p>
