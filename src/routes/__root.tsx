@@ -1,6 +1,6 @@
 import { Outlet, createRootRoute, Link, useNavigate, useMatchRoute, useLocation } from '@tanstack/react-router';
 import { Toaster } from 'react-hot-toast';
-import { Music, Library, ListMusic, LogOut, Menu, X, ChevronDown, Users, User, CalendarDays, Loader2, Chrome } from 'lucide-react';
+import { Music, Library, ListMusic, LogOut, Menu, X, ChevronDown, Users, User, CalendarDays, Loader2, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
