@@ -13,6 +13,7 @@ import {
   X,
   Play,
   ExternalLink,
+  Check,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import Button from '@/components/Button';
@@ -636,7 +637,7 @@ function SetlistViewPage() {
                               >
                                 {editingItems.has(item.id) ? (
                                   <>
-                                    <X className="w-4 h-4" />
+                                    <Check className="w-4 h-4" />
                                     완료
                                   </>
                                 ) : (

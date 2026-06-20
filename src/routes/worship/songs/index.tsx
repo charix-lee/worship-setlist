@@ -11,6 +11,8 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Type,
 } from 'lucide-react';
 import { useSongs } from '@/hooks/useSongs';
@@ -42,6 +44,8 @@ function SongsPage() {
   const [editingSong, setEditingSong] = useState<SongWithSheets | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lyricsModalSong, setLyricsModalSong] = useState<SongWithSheets | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const filteredSongs = useMemo(() => {
     if (!search.trim()) return songs;
@@ -52,6 +56,19 @@ function SongsPage() {
         song.artist?.toLowerCase().includes(searchLower)
     );
   }, [songs, search]);
+
+  // 페이지네이션
+  const totalPages = Math.ceil(filteredSongs.length / ITEMS_PER_PAGE);
+  const paginatedSongs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredSongs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredSongs, currentPage]);
+
+  // 검색어 변경 시 첫 페이지로
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
 
   const handleSearch = () => {
     fetchSongs(search.trim() || undefined);
@@ -92,7 +109,7 @@ function SongsPage() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="곡명 또는 아티스트로 검색..."
             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -131,7 +148,7 @@ function SongsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredSongs.map((song) => (
+          {paginatedSongs.map((song) => (
             <div
               key={song.id}
               className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-primary-300 hover:shadow-md transition-all cursor-pointer"
@@ -237,6 +254,43 @@ function SongsPage() {
               </div>
             </div>
           ))}
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === page
+                        ? 'bg-primary-600 text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Save, Loader2, Highlighter, Tag } from 'lucide-react';
+import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Highlighter, Tag } from 'lucide-react';
 
 type ToolType = 'pen' | 'highlighter' | 'eraser' | 'badge';
 type EraserMode = 'partial' | 'stroke';
@@ -116,6 +116,13 @@ export default function DrawingCanvas({
   // Check if there are unsaved changes
   const hasChanges = JSON.stringify(strokes) !== JSON.stringify(savedStrokes) ||
                      JSON.stringify(badges) !== JSON.stringify(savedBadges);
+
+  // Auto-save when exiting edit mode (readOnly becomes true)
+  useEffect(() => {
+    if (readOnly && hasChanges && onSave) {
+      handleSave();
+    }
+  }, [readOnly]);
 
   // Load existing annotations
   useEffect(() => {
@@ -715,7 +722,7 @@ export default function DrawingCanvas({
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 ml-auto">
             <button
               onClick={handleUndo}
               disabled={strokes.length === 0 && badges.length === 0}
@@ -733,32 +740,6 @@ export default function DrawingCanvas({
               <Trash2 className="w-5 h-5" />
             </button>
           </div>
-
-          {/* Save button */}
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors ${
-              hasChanges
-                ? 'bg-primary-600 text-white hover:bg-primary-700'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
-            title="저장"
-          >
-            {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            저장
-          </button>
-        </div>
-      )}
-
-      {/* Unsaved changes indicator */}
-      {!readOnly && hasChanges && (
-        <div className="text-xs text-amber-600 text-center">
-          저장되지 않은 변경사항이 있습니다
         </div>
       )}
 
