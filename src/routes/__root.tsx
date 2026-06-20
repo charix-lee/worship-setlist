@@ -1,6 +1,6 @@
 import { Outlet, createRootRoute, Link, useNavigate, useMatchRoute, useLocation } from '@tanstack/react-router';
 import { Toaster } from 'react-hot-toast';
-import { Music, Library, ListMusic, LogOut, Menu, X, ChevronDown, Users, User, CalendarDays, Loader2 } from 'lucide-react';
+import { Music, Library, ListMusic, LogOut, Menu, X, ChevronDown, Users, User, CalendarDays, Loader2, Chrome } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
@@ -11,9 +11,54 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
+  const [showKakaoBanner, setShowKakaoBanner] = useState(false);
+
+  // 카카오톡 인앱 브라우저 감지
+  useEffect(() => {
+    const isKakaoInApp = /KAKAOTALK/i.test(navigator.userAgent);
+    const bannerDismissed = localStorage.getItem('kakao-banner-dismissed');
+    setShowKakaoBanner(isKakaoInApp && !bannerDismissed);
+  }, []);
+
+  const openInChrome = () => {
+    const currentUrl = window.location.href;
+    window.location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(currentUrl)}`;
+  };
+
+  const dismissKakaoBanner = () => {
+    localStorage.setItem('kakao-banner-dismissed', 'true');
+    setShowKakaoBanner(false);
+  };
+
   return (
     <AuthProvider>
-      <LayoutWrapper />
+      {/* 카카오톡 인앱 브라우저 배너 */}
+      {showKakaoBanner && (
+        <div className="fixed top-0 left-0 right-0 bg-yellow-50 border-b border-yellow-200 px-4 py-3 z-[9999] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Chrome className="w-5 h-5 text-yellow-700 flex-shrink-0" />
+            <p className="text-sm text-yellow-800 font-medium">
+              크롬에서 더 나은 경험을 제공합니다
+            </p>
+          </div>
+          <button
+            onClick={openInChrome}
+            className="px-3 py-1.5 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors flex-shrink-0"
+          >
+            크롬으로 열기
+          </button>
+          <button
+            onClick={dismissKakaoBanner}
+            className="p-1 text-yellow-600 hover:text-yellow-800 transition-colors flex-shrink-0"
+            aria-label="닫기"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+      <div className={showKakaoBanner ? 'pt-[52px]' : ''}>
+        <LayoutWrapper />
+      </div>
       <Toaster
         position="top-center"
         toastOptions={{
