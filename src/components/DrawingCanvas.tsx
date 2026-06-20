@@ -98,7 +98,6 @@ export default function DrawingCanvas({
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [savedStrokes, setSavedStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
-  const [saving, setSaving] = useState(false);
 
   // Badge state
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -417,7 +416,6 @@ export default function DrawingCanvas({
   const handleSave = async () => {
     if (!onSave || !hasChanges) return;
 
-    setSaving(true);
     try {
       // 새 형식으로 저장 (strokes + badges)
       await onSave(JSON.stringify({ strokes, badges }));
@@ -425,8 +423,6 @@ export default function DrawingCanvas({
       setSavedBadges(badges);
     } catch (error) {
       console.error('Save failed:', error);
-    } finally {
-      setSaving(false);
     }
   };
 
