@@ -12,24 +12,26 @@ export const Route = createFileRoute('/my-church/')({
   component: MyChurchPage,
 });
 
-// 이번 주 일요일 날짜 구하기
-function getThisSunday(): string {
+// 오늘부터 다가오는 일요일 전날(토요일)까지의 범위
+function getWeekRangeFromToday(): { start: string; end: string } {
   const today = dayjs();
-  const dayOfWeek = today.day();
-  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-  return today.add(daysUntilSunday, 'day').format('YYYY-MM-DD');
-}
+  const dayOfWeek = today.day(); // 0(일) ~ 6(토)
 
-// 이번 주 범위 구하기 (오늘 ~ 일요일)
-function getThisWeekRange(): { start: string; end: string } {
-  const today = dayjs();
-  const dayOfWeek = today.day();
-  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-  const sunday = today.add(daysUntilSunday, 'day');
+  let nextSunday;
+  if (dayOfWeek === 0) {
+    // 오늘이 일요일이면 다음주 일요일
+    nextSunday = today.add(7, 'day');
+  } else {
+    // 월~토요일이면 이번주 일요일
+    nextSunday = today.add(7 - dayOfWeek, 'day');
+  }
+
+  // 일요일 전날 (토요일)
+  const saturday = nextSunday.subtract(1, 'day');
 
   return {
     start: today.format('YYYY-MM-DD'),
-    end: sunday.format('YYYY-MM-DD'),
+    end: saturday.format('YYYY-MM-DD'),
   };
 }
 
@@ -42,15 +44,16 @@ function MyChurchPage() {
   const { setlists, loading: setlistsLoading } = useSetlists();
   const { schedules, loading: schedulesLoading } = useSchedules();
 
-  const thisSunday = useMemo(() => getThisSunday(), []);
-  const weekRange = useMemo(() => getThisWeekRange(), []);
+  const weekRange = useMemo(() => getWeekRangeFromToday(), []);
 
-  // 이번 주 일요일 콘티
-  const sundaySetlists = useMemo(() => {
-    return setlists.filter(s => s.date === thisSunday);
-  }, [setlists, thisSunday]);
+  // 이번 주 콘티 (오늘 ~ 다음 일요일 전날)
+  const weekSetlists = useMemo(() => {
+    return setlists
+      .filter(s => s.date >= weekRange.start && s.date <= weekRange.end)
+      .sort((a, b) => a.date.localeCompare(b.date)); // 날짜순 정렬
+  }, [setlists, weekRange]);
 
-  // 이번 주 일정 (오늘 ~ 일요일)
+  // 이번 주 일정 (오늘 ~ 다음 일요일 전날)
   const weekSchedules = useMemo(() => {
     return schedules.filter(s => {
       return s.start_date >= weekRange.start && s.start_date <= weekRange.end;
@@ -82,9 +85,9 @@ function MyChurchPage() {
             <div className="bg-white rounded-xl p-6 text-center text-gray-500">
               불러오는 중...
             </div>
-          ) : sundaySetlists.length > 0 ? (
+          ) : weekSetlists.length > 0 ? (
             <div className="space-y-3">
-              {sundaySetlists.map((setlist) => (
+              {weekSetlists.map((setlist) => (
                 <Link
                   key={setlist.id}
                   to="/worship/setlists/$id"
@@ -118,7 +121,7 @@ function MyChurchPage() {
                 <ListMusic className="w-5 h-5 text-primary-600" />
               </div>
               <p className="text-sm text-gray-500">
-                이번 주 일요일({formatDate(thisSunday)}) 콘티가 없습니다
+                이번 주 콘티가 없습니다
               </p>
               <p className="text-sm text-primary-600 font-medium mt-1">
                 콘티 추가하기 →

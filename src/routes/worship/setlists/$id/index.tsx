@@ -31,6 +31,7 @@ import {
   X,
   Save,
   PenTool,
+  Calendar,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { useSongs } from '@/hooks/useSongs';
@@ -150,6 +151,7 @@ function SetlistEditPage() {
   const navigate = useNavigate();
   const {
     fetchSetlistById,
+    updateSetlist,
     updateSetlistItem,
     removeItemFromSetlist,
     addItemToSetlist,
@@ -164,11 +166,19 @@ function SetlistEditPage() {
   const [originalItems, setOriginalItems] = useState<SetlistItemWithSong[]>([]);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
 
+  // 콘티 기본 정보
+  const [date, setDate] = useState('');
+  const [serviceType, setServiceType] = useState('');
+  const [originalDate, setOriginalDate] = useState('');
+  const [originalServiceType, setOriginalServiceType] = useState('');
+
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
 
-  const hasChanges = itemsToDelete.length > 0 || JSON.stringify(items) !== JSON.stringify(originalItems);
+  const hasSetlistInfoChanges = date !== originalDate || serviceType !== originalServiceType;
+  const hasItemsChanges = itemsToDelete.length > 0 || JSON.stringify(items) !== JSON.stringify(originalItems);
+  const hasChanges = hasSetlistInfoChanges || hasItemsChanges;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -186,6 +196,10 @@ function SetlistEditPage() {
         setItems(data.setlist_items);
         setOriginalItems(JSON.parse(JSON.stringify(data.setlist_items)));
         setItemsToDelete([]);
+        setDate(data.date);
+        setServiceType(data.service_type);
+        setOriginalDate(data.date);
+        setOriginalServiceType(data.service_type);
       } else {
         toast.error('콘티를 찾을 수 없습니다.');
         navigate({ to: '/worship/setlists' });
@@ -233,10 +247,22 @@ function SetlistEditPage() {
 
     setSaving(true);
     try {
+      // 콘티 기본 정보 업데이트
+      if (hasSetlistInfoChanges) {
+        await updateSetlist(id, {
+          date,
+          service_type: serviceType,
+        });
+        setOriginalDate(date);
+        setOriginalServiceType(serviceType);
+      }
+
+      // 삭제할 아이템 처리
       for (const itemId of itemsToDelete) {
         await removeItemFromSetlist(itemId);
       }
 
+      // 아이템 업데이트
       for (const item of items) {
         const original = originalItems.find((o) => o.id === item.id);
         if (original) {
@@ -252,6 +278,7 @@ function SetlistEditPage() {
         }
       }
 
+      // 순서 변경 처리
       const orderChanged = items.some((item) => {
         const original = originalItems.find((o) => o.id === item.id);
         return original && original.position !== item.position;
@@ -263,6 +290,12 @@ function SetlistEditPage() {
 
       setOriginalItems(JSON.parse(JSON.stringify(items)));
       setItemsToDelete([]);
+
+      // 저장 후 콘티 정보 다시 불러오기 (updated_at 갱신을 위해)
+      const updatedSetlist = await fetchSetlistById(id);
+      if (updatedSetlist) {
+        setSetlist(updatedSetlist);
+      }
 
       toast.success('저장되었습니다.');
     } catch (error) {
@@ -309,6 +342,23 @@ function SetlistEditPage() {
     return dayjs(dateStr).format('YYYY.MM.DD (ddd)');
   };
 
+  const formatUpdatedAt = (dateStr: string) => {
+    const now = dayjs();
+    const updated = dayjs(dateStr);
+    const hoursDiff = now.diff(updated, 'hour');
+
+    if (hoursDiff < 24) {
+      if (hoursDiff < 1) {
+        const minutesDiff = now.diff(updated, 'minute');
+        if (minutesDiff < 1) return '방금 전';
+        return `${minutesDiff}분 전`;
+      }
+      return `${hoursDiff}시간 전`;
+    }
+
+    return updated.format('YYYY.MM.DD HH:mm');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -329,8 +379,22 @@ function SetlistEditPage() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">{formatDate(setlist.date)}</h1>
-          <p className="text-sm text-gray-500">{setlist.service_type}</p>
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar className="w-5 h-5 text-gray-400" />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="px-2 py-1 text-lg font-bold text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
+          </div>
+          <input
+            type="text"
+            value={serviceType}
+            onChange={(e) => setServiceType(e.target.value)}
+            placeholder="예배 유형 (예: 주일예배, 수요예배)"
+            className="w-full px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          />
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -447,6 +511,11 @@ function SetlistEditPage() {
           </div>
         </div>
       </Modal>
+
+      {/* 마지막 수정 시간 */}
+      <div className="mt-6 pt-4 border-t border-gray-200 text-center text-sm text-gray-400">
+        마지막 수정: {formatUpdatedAt(setlist.updated_at)}
+      </div>
     </div>
   );
 }
