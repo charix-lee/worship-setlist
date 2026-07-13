@@ -156,7 +156,7 @@ function SongsPage() {
                     <Music2 className="w-5 h-5 text-primary-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 line-clamp-2 break-words">{song.title}</h3>
+                    <h3 className="font-medium text-gray-900 break-words">{song.title}</h3>
                     <p className="text-sm text-gray-500 truncate mt-0.5">
                       {song.artist || '아티스트 미입력'}
                     </p>
