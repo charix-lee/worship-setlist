@@ -7,10 +7,7 @@ import {
   PlayCircle,
   Edit2,
   Trash2,
-  FileText,
   Loader2,
-  ChevronDown,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Type,
@@ -42,7 +39,6 @@ function SongsPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSong, setEditingSong] = useState<SongWithSheets | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lyricsModalSong, setLyricsModalSong] = useState<SongWithSheets | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -160,12 +156,30 @@ function SongsPage() {
                     <Music2 className="w-5 h-5 text-primary-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">{song.title}</h3>
-                    <p className="text-sm text-gray-500 truncate">
+                    <h3 className="font-medium text-gray-900 line-clamp-2 break-words">{song.title}</h3>
+                    <p className="text-sm text-gray-500 truncate mt-0.5">
                       {song.artist || '아티스트 미입력'}
                     </p>
+
+                    {/* 모바일: 악보 키들 바로 아래 표시 */}
+                    {song.song_sheets.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-2 sm:hidden" onClick={(e) => e.stopPropagation()}>
+                        {song.song_sheets.map((sheet) => (
+                          <a
+                            key={sheet.id}
+                            href={sheet.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded hover:bg-primary-100 hover:text-primary-700 transition-colors"
+                          >
+                            {sheet.music_key}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
+                  {/* 데스크톱: 악보 키들 오른쪽에 표시 */}
                   <div className="hidden sm:flex items-center gap-1 flex-wrap justify-end" onClick={(e) => e.stopPropagation()}>
                     {song.song_sheets.map((sheet) => (
                       <a
@@ -180,14 +194,14 @@ function SongsPage() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     {song.lyrics && (
                       <button
                         onClick={() => setLyricsModalSong(song)}
-                        className="p-2 text-gray-400 hover:text-green-600 transition-colors"
-                        title="가사 보기/복사"
+                        className="p-1.5 text-gray-400 hover:text-green-600 transition-colors"
+                        title="가사"
                       >
-                        <Type className="w-5 h-5" />
+                        <Type className="w-4 h-4" />
                       </button>
                     )}
                     {song.youtube_url && (
@@ -195,60 +209,32 @@ function SongsPage() {
                         href={song.youtube_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                        title="유튜브 영상 보기"
+                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                        title="유튜브"
                       >
-                        <PlayCircle className="w-5 h-5" />
+                        <PlayCircle className="w-4 h-4" />
                       </a>
                     )}
                     <button
                       onClick={() => openEditModal(song)}
-                      className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
                       title="수정"
                     >
-                      <Edit2 className="w-5 h-5" />
+                      <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(song.id, song.title)}
-                      className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
                       title="삭제"
                     >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => setExpandedId(expandedId === song.id ? null : song.id)}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors sm:hidden"
-                    >
-                      {expandedId === song.id ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                {expandedId === song.id && (
-                  <div className="mt-3 pt-3 border-t border-gray-100 sm:hidden" onClick={(e) => e.stopPropagation()}>
-                    {song.song_sheets.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {song.song_sheets.map((sheet) => (
-                          <a
-                            key={sheet.id}
-                            href={sheet.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-600 text-sm rounded hover:bg-primary-100 hover:text-primary-700 transition-colors"
-                          >
-                            <FileText className="w-4 h-4" />
-                            {sheet.music_key}
-                          </a>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-400">등록된 악보가 없습니다</p>
-                    )}
-                    {song.memo && <p className="mt-2 text-sm text-gray-500">{song.memo}</p>}
+                {song.memo && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <p className="text-sm text-gray-500">{song.memo}</p>
                   </div>
                 )}
               </div>

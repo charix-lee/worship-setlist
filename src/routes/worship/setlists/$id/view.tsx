@@ -42,12 +42,25 @@ function WorshipModeSheet({
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
+  // 줌/팬 상태
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
+  const [touchDistance, setTouchDistance] = useState<number | null>(null);
+
   // 이미지 로드
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => setImage(img);
     img.src = imageUrl;
+  }, [imageUrl]);
+
+  // 이미지 변경 시 줌/팬 초기화
+  useEffect(() => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
   }, [imageUrl]);
 
   // 컨테이너 크기에 맞춰 dimensions 계산
@@ -72,6 +85,93 @@ function WorshipModeSheet({
 
     setDimensions({ width, height });
   }, [image]);
+
+  // 더블 클릭으로 줌 토글
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (scale > 1) {
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+    } else {
+      setScale(2);
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      setPosition({
+        x: (rect.width / 2 - x) * 2,
+        y: (rect.height / 2 - y) * 2,
+      });
+    }
+  }, [scale]);
+
+  // 마우스 드래그 시작
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (scale <= 1) return;
+    e.preventDefault();
+    setIsPanning(true);
+    setLastPanPoint({ x: e.clientX, y: e.clientY });
+  }, [scale]);
+
+  // 마우스 드래그
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    const dx = e.clientX - lastPanPoint.x;
+    const dy = e.clientY - lastPanPoint.y;
+    setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+    setLastPanPoint({ x: e.clientX, y: e.clientY });
+  }, [isPanning, lastPanPoint]);
+
+  // 마우스 드래그 종료
+  const handleMouseUp = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  // 터치 시작 (핀치 줌)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      setTouchDistance(distance);
+    } else if (e.touches.length === 1 && scale > 1) {
+      const touch = e.touches[0];
+      setIsPanning(true);
+      setLastPanPoint({ x: touch.clientX, y: touch.clientY });
+    }
+  }, [scale]);
+
+  // 터치 이동 (핀치 줌 + 드래그)
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchDistance !== null) {
+      e.preventDefault();
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      const newScale = Math.max(1, Math.min(4, scale * (distance / touchDistance)));
+      setScale(newScale);
+      setTouchDistance(distance);
+    } else if (e.touches.length === 1 && isPanning) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const dx = touch.clientX - lastPanPoint.x;
+      const dy = touch.clientY - lastPanPoint.y;
+      setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setLastPanPoint({ x: touch.clientX, y: touch.clientY });
+    }
+  }, [touchDistance, isPanning, lastPanPoint, scale]);
+
+  // 터치 종료
+  const handleTouchEnd = useCallback(() => {
+    setTouchDistance(null);
+    setIsPanning(false);
+  }, []);
 
   // annotations 그리기
   const drawAnnotations = useCallback(() => {
@@ -191,13 +291,35 @@ function WorshipModeSheet({
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full flex items-center justify-center">
-      <div className="relative" style={{ width: dimensions.width, height: dimensions.height }}>
+    <div
+      ref={containerRef}
+      className="w-full h-full flex items-center justify-center overflow-hidden"
+      onDoubleClick={handleDoubleClick}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ cursor: scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
+    >
+      <div
+        className="relative"
+        style={{
+          width: dimensions.width,
+          height: dimensions.height,
+          transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+          transformOrigin: 'center center',
+          transition: isPanning ? 'none' : 'transform 0.3s ease-out',
+        }}
+      >
         <img
           src={imageUrl}
           alt={`${title} 악보`}
           style={{ width: dimensions.width, height: dimensions.height }}
           className="block"
+          draggable={false}
         />
         <canvas
           ref={canvasRef}
@@ -715,26 +837,7 @@ function SetlistViewPage() {
 
       {/* 찬양 모드 (전체화면) */}
       {worshipMode && setlist && setlist.setlist_items.length > 0 && (
-        <div
-          className="fixed inset-0 bg-black z-[100] flex flex-col touch-none"
-          onTouchStart={(e) => {
-            const touch = e.touches[0];
-            (e.currentTarget as HTMLElement).dataset.touchStartX = String(touch.clientX);
-          }}
-          onTouchEnd={(e) => {
-            const startX = Number((e.currentTarget as HTMLElement).dataset.touchStartX);
-            const endX = e.changedTouches[0].clientX;
-            const diff = startX - endX;
-
-            if (Math.abs(diff) > 50) {
-              if (diff > 0 && currentIndex < setlist.setlist_items.length - 1) {
-                setCurrentIndex(currentIndex + 1);
-              } else if (diff < 0 && currentIndex > 0) {
-                setCurrentIndex(currentIndex - 1);
-              }
-            }
-          }}
-        >
+        <div className="fixed inset-0 bg-black z-[100] flex flex-col">
           {/* 상단 바 */}
           <div className="flex items-center justify-between px-4 py-3 bg-black/80">
             <div className="flex items-center gap-3 text-white flex-1 min-w-0">
