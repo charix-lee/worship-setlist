@@ -13,6 +13,7 @@ import {
   Type,
 } from 'lucide-react';
 import { useSongs } from '@/hooks/useSongs';
+import { usePermissions } from '@/hooks/usePermissions';
 import SongModal from '@/components/SongModal';
 import Button from '@/components/Button';
 import LyricsModal from '@/components/LyricsModal';
@@ -35,6 +36,7 @@ function SongsPage() {
     addSheet,
     removeSheet,
   } = useSongs();
+  const { can } = usePermissions();
 
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -111,16 +113,18 @@ function SongsPage() {
             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           />
         </div>
-        <Button
-          onClick={() => {
-            setEditingSong(null);
-            setModalOpen(true);
-          }}
-          icon={<Plus className="w-5 h-5" />}
-          size="lg"
-        >
-          새 곡 추가
-        </Button>
+        {can.createSong && (
+          <Button
+            onClick={() => {
+              setEditingSong(null);
+              setModalOpen(true);
+            }}
+            icon={<Plus className="w-5 h-5" />}
+            size="lg"
+          >
+            새 곡 추가
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -133,7 +137,7 @@ function SongsPage() {
           <p className="text-gray-500">
             {search ? '검색 결과가 없습니다.' : '등록된 곡이 없습니다.'}
           </p>
-          {!search && (
+          {!search && can.createSong && (
             <button
               onClick={() => setModalOpen(true)}
               className="mt-3 text-primary-600 hover:text-primary-700 text-sm font-medium"
@@ -215,20 +219,24 @@ function SongsPage() {
                         <PlayCircle className="w-4 h-4" />
                       </a>
                     )}
-                    <button
-                      onClick={() => openEditModal(song)}
-                      className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
-                      title="수정"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(song.id, song.title)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                      title="삭제"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {can.editSong && (
+                      <button
+                        onClick={() => openEditModal(song)}
+                        className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
+                        title="수정"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    {can.deleteSong && (
+                      <button
+                        onClick={() => handleDelete(song.id, song.title)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                        title="삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
 

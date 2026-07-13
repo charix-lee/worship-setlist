@@ -14,9 +14,11 @@ import {
   Plus,
   Check,
   X,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChurches } from '@/hooks/useChurches';
+import { usePermissions } from '@/hooks/usePermissions';
 import Button from '@/components/Button';
 import Modal from '@/components/Modal';
 import { REGIONS, DENOMINATIONS, type Church } from '@/types/database';
@@ -30,6 +32,7 @@ function MyPage() {
   const navigate = useNavigate();
   const { profile, updateProfile } = useAuth();
   const { churches, searchChurches, createChurch, getChurchById } = useChurches();
+  const { isAdmin } = usePermissions();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState('');
@@ -226,6 +229,29 @@ function MyPage() {
             </div>
             <p className="mt-3 text-sm text-gray-500">클릭하여 프로필 사진 변경</p>
           </div>
+
+          {/* 관리자 메뉴 */}
+          {isAdmin && (
+            <div className="p-6 lg:p-8 border-b border-gray-200 bg-gradient-to-r from-red-50 to-orange-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">관리자 메뉴</h3>
+                    <p className="text-sm text-gray-600">사용자 권한을 관리합니다</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate({ to: '/admin/users' })}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
+                >
+                  권한 관리
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 프로필 정보 폼 */}
           <div className="p-6 lg:p-8 space-y-5">

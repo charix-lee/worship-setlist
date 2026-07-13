@@ -16,6 +16,7 @@ import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as MypageIndexRouteImport } from './routes/mypage/index'
 import { Route as MyChurchIndexRouteImport } from './routes/my-church/index'
 import { Route as LoginIndexRouteImport } from './routes/login/index'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as WorshipSongsIndexRouteImport } from './routes/worship/songs/index'
 import { Route as WorshipSetlistsIndexRouteImport } from './routes/worship/setlists/index'
 import { Route as WorshipSetlistsIdIndexRouteImport } from './routes/worship/setlists/$id/index'
@@ -57,6 +58,11 @@ const LoginIndexRoute = LoginIndexRouteImport.update({
   path: '/login/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WorshipSongsIndexRoute = WorshipSongsIndexRouteImport.update({
   id: '/worship/songs/',
   path: '/worship/songs/',
@@ -85,6 +91,7 @@ const WorshipSetlistsIdViewRoute = WorshipSetlistsIdViewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin/users': typeof AdminUsersRoute
   '/login/': typeof LoginIndexRoute
   '/my-church/': typeof MyChurchIndexRoute
   '/mypage/': typeof MypageIndexRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/users': typeof AdminUsersRoute
   '/login': typeof LoginIndexRoute
   '/my-church': typeof MyChurchIndexRoute
   '/mypage': typeof MypageIndexRoute
@@ -114,6 +122,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin/users': typeof AdminUsersRoute
   '/login/': typeof LoginIndexRoute
   '/my-church/': typeof MyChurchIndexRoute
   '/mypage/': typeof MypageIndexRoute
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin/users'
     | '/login/'
     | '/my-church/'
     | '/mypage/'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin/users'
     | '/login'
     | '/my-church'
     | '/mypage'
@@ -158,6 +169,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin/users'
     | '/login/'
     | '/my-church/'
     | '/mypage/'
@@ -173,6 +185,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   LoginIndexRoute: typeof LoginIndexRoute
   MyChurchIndexRoute: typeof MyChurchIndexRoute
   MypageIndexRoute: typeof MypageIndexRoute
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/worship/songs/': {
       id: '/worship/songs/'
       path: '/worship/songs'
@@ -277,6 +297,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminUsersRoute: AdminUsersRoute,
   LoginIndexRoute: LoginIndexRoute,
   MyChurchIndexRoute: MyChurchIndexRoute,
   MypageIndexRoute: MypageIndexRoute,

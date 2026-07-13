@@ -12,6 +12,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
+import { usePermissions } from '@/hooks/usePermissions';
 import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import { SERVICE_TYPES } from '@/types/database';
@@ -26,6 +27,7 @@ export const Route = createFileRoute('/worship/setlists/')({
 function SetlistsPage() {
   const { setlists, loading, createSetlist, deleteSetlist } = useSetlists();
   const navigate = useNavigate();
+  const { can } = usePermissions();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
@@ -87,9 +89,11 @@ function SetlistsPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-1">콘티 목록</h1>
           <p className="text-gray-600">예배별 콘티를 관리하세요</p>
         </div>
-        <Button onClick={() => setModalOpen(true)} icon={<Plus className="w-5 h-5" />} size="lg">
-          <span className="hidden sm:inline">새 콘티</span>
-        </Button>
+        {can.createSetlist && (
+          <Button onClick={() => setModalOpen(true)} icon={<Plus className="w-5 h-5" />} size="lg">
+            <span className="hidden sm:inline">새 콘티</span>
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -100,12 +104,14 @@ function SetlistsPage() {
         <div className="text-center py-12">
           <ListMusic className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">등록된 콘티가 없습니다.</p>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="mt-3 text-primary-600 hover:text-primary-700 text-sm font-medium"
-          >
-            첫 번째 콘티 만들기
-          </button>
+          {can.createSetlist && (
+            <button
+              onClick={() => setModalOpen(true)}
+              className="mt-3 text-primary-600 hover:text-primary-700 text-sm font-medium"
+            >
+              첫 번째 콘티 만들기
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-8">
@@ -141,20 +147,24 @@ function SetlistsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: setlist.id } })}
-                          className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
-                          title="편집"
-                        >
-                          <Edit2 className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(setlist.id, setlist.title)}
-                          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                          title="삭제"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                        {can.editSetlist && (
+                          <button
+                            onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: setlist.id } })}
+                            className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                            title="편집"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                        )}
+                        {can.deleteSetlist && (
+                          <button
+                            onClick={() => handleDelete(setlist.id, setlist.title)}
+                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

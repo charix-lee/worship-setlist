@@ -9,6 +9,19 @@ export interface Church {
   updated_at: string;
 }
 
+// 사용자 역할
+export type UserRole = 'admin' | 'staff' | 'worship_team' | 'member';
+
+// 권한 타입
+export type Permission =
+  | 'songs:create'
+  | 'songs:edit'
+  | 'songs:delete'
+  | 'setlists:create'
+  | 'setlists:edit'
+  | 'setlists:delete'
+  | 'setlists:view';
+
 export interface Profile {
   id: string;
   email: string | null;
@@ -17,7 +30,7 @@ export interface Profile {
   birth_date: string | null;
   region: string | null;
   church_id: string | null;
-  role: 'admin' | 'member';
+  role: UserRole;
   is_onboarded: boolean;
   created_at: string;
   updated_at: string;

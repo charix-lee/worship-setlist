@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { useSongs } from '@/hooks/useSongs';
+import { usePermissions } from '@/hooks/usePermissions';
 import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '@/types/database';
@@ -158,6 +159,7 @@ function SetlistEditPage() {
     reorderSetlistItems,
   } = useSetlists();
   const { songs, fetchSongs } = useSongs();
+  const { can } = usePermissions();
 
   const [setlist, setSetlist] = useState<SetlistWithItems | null>(null);
   const [loading, setLoading] = useState(true);
@@ -188,6 +190,13 @@ function SetlistEditPage() {
   useEffect(() => {
     if (!id) return;
 
+    // 권한 체크 - 편집 권한이 없으면 view 페이지로 리다이렉트
+    if (!can.editSetlist) {
+      toast.error('콘티를 편집할 권한이 없습니다.');
+      navigate({ to: '/worship/setlists/$id/view', params: { id } });
+      return;
+    }
+
     const loadSetlist = async () => {
       setLoading(true);
       const data = await fetchSetlistById(id);
@@ -208,7 +217,7 @@ function SetlistEditPage() {
     };
 
     loadSetlist();
-  }, [id, fetchSetlistById, navigate]);
+  }, [id, fetchSetlistById, navigate, can.editSetlist]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;

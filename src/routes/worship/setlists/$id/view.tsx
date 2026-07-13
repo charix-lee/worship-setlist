@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
+import { usePermissions } from '@/hooks/usePermissions';
 import Button from '@/components/Button';
 import DrawingCanvas from '@/components/DrawingCanvas';
 import LyricsModal from '@/components/LyricsModal';
@@ -340,6 +341,7 @@ function SetlistViewPage() {
   const { id } = useParams({ strict: false });
   const navigate = useNavigate();
   const { fetchSetlistById, updateSetlistItem } = useSetlists();
+  const { can } = usePermissions();
 
   const [setlist, setSetlist] = useState<SetlistWithItems | null>(null);
   const [loading, setLoading] = useState(true);
@@ -655,13 +657,15 @@ function SetlistViewPage() {
           >
             찬양
           </Button>
-          <button
-            onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
-            className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
-            title="편집"
-          >
-            <Edit2 className="w-5 h-5" />
-          </button>
+          {can.editSetlist && (
+            <button
+              onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
+              className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
+              title="편집"
+            >
+              <Edit2 className="w-5 h-5" />
+            </button>
+          )}
           <Button onClick={handleExportPDF} loading={exporting} icon={!exporting ? <Download className="w-4 h-4" /> : undefined}>
             PDF
           </Button>
@@ -749,26 +753,28 @@ function SetlistViewPage() {
                                   가사보기
                                 </button>
                               )}
-                              <button
-                                onClick={() => toggleEditing(item.id)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                  editingItems.has(item.id)
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                                }`}
-                              >
-                                {editingItems.has(item.id) ? (
-                                  <>
-                                    <Check className="w-4 h-4" />
-                                    완료
-                                  </>
-                                ) : (
-                                  <>
-                                    <PenTool className="w-4 h-4" />
-                                    그리기
-                                  </>
-                                )}
-                              </button>
+                              {can.editSetlist && (
+                                <button
+                                  onClick={() => toggleEditing(item.id)}
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                    editingItems.has(item.id)
+                                      ? 'bg-primary-600 text-white'
+                                      : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                                  }`}
+                                >
+                                  {editingItems.has(item.id) ? (
+                                    <>
+                                      <Check className="w-4 h-4" />
+                                      완료
+                                    </>
+                                  ) : (
+                                    <>
+                                      <PenTool className="w-4 h-4" />
+                                      그리기
+                                    </>
+                                  )}
+                                </button>
+                              )}
                             </div>
                           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                             {isPdf ? (
@@ -778,7 +784,7 @@ function SetlistViewPage() {
                                 imageUrl={displaySheet.file_url}
                                 annotations={item.annotations || undefined}
                                 onSave={(annotations) => handleSaveAnnotations(item.id, annotations)}
-                                readOnly={!editingItems.has(item.id)}
+                                readOnly={!can.editSetlist || !editingItems.has(item.id)}
                               />
                             ) : null}
                           </div>
