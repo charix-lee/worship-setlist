@@ -338,10 +338,6 @@ function SetlistEditPage() {
     return song.title.toLowerCase().includes(query) || song.artist?.toLowerCase().includes(query);
   });
 
-  const formatDate = (dateStr: string) => {
-    return dayjs(dateStr).format('YYYY.MM.DD (ddd)');
-  };
-
   const formatUpdatedAt = (dateStr: string) => {
     const now = dayjs();
     const updated = dayjs(dateStr);
