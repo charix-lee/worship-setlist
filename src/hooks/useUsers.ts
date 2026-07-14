@@ -25,12 +25,20 @@ export function useUsers() {
 
   const updateUserRole = async (userId: string, role: UserRole) => {
     try {
-      const { error } = await supabase
+      console.log('Updating user role:', { userId, role });
+
+      const { data, error } = await supabase
         .from('profiles')
         .update({ role, updated_at: new Date().toISOString() })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Update successful:', data);
 
       // 로컬 상태 업데이트
       setUsers(prev =>

@@ -10,6 +10,7 @@ import {
   Trash2,
   Loader2,
   Clock,
+  User,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -141,9 +142,17 @@ function SetlistsPage() {
                         {setlist.description && (
                           <p className="text-sm text-gray-500 truncate">{setlist.description}</p>
                         )}
-                        <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
-                          <Clock className="w-3 h-3" />
-                          {dayjs(setlist.created_at).format('YYYY. M. D.')}
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {dayjs(setlist.created_at).format('YYYY. M. D.')}
+                          </div>
+                          {setlist.creator?.name && (
+                            <div className="flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              {setlist.creator.name}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>

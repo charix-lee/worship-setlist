@@ -36,6 +36,8 @@ import {
 import { useSetlists } from '@/hooks/useSetlists';
 import { useSongs } from '@/hooks/useSongs';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '@/types/database';
@@ -52,12 +54,16 @@ function SortableItem({
   item,
   onKeyChange,
   onNoteChange,
+  onCommentChange,
   onRemove,
+  isOwner,
 }: {
   item: SetlistItemWithSong;
   onKeyChange: (key: string) => void;
   onNoteChange: (note: string) => void;
+  onCommentChange: (comment: string) => void;
   onRemove: () => void;
+  isOwner: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id });
@@ -137,6 +143,16 @@ function SortableItem({
             placeholder="곡 메모 (예: 인트로 2번 반복)"
             className="mt-2 w-full px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           />
+
+          {isOwner && (
+            <textarea
+              value={item.comment || ''}
+              onChange={(e) => onCommentChange(e.target.value)}
+              placeholder="멘트 (생성자만 보임)"
+              rows={2}
+              className="mt-2 w-full px-2 py-1 text-sm border border-orange-300 bg-orange-50 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+            />
+          )}
         </div>
 
         <button onClick={onRemove} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
@@ -159,7 +175,8 @@ function SetlistEditPage() {
     reorderSetlistItems,
   } = useSetlists();
   const { songs, fetchSongs } = useSongs();
-  const { can } = usePermissions();
+  const { can, profile } = usePermissions();
+  const { loading: authLoading } = useAuth();
 
   const [setlist, setSetlist] = useState<SetlistWithItems | null>(null);
   const [loading, setLoading] = useState(true);
@@ -190,10 +207,15 @@ function SetlistEditPage() {
   useEffect(() => {
     if (!id) return;
 
-    // 권한 체크 - 편집 권한이 없으면 view 페이지로 리다이렉트
-    if (!can.editSetlist) {
-      toast.error('콘티를 편집할 권한이 없습니다.');
-      navigate({ to: '/worship/setlists/$id/view', params: { id } });
+    // 인증 정보가 완전히 로드될 때까지 대기
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    // profile이 로드될 때까지 대기 (로그인이 필요한 페이지)
+    if (!profile) {
+      setLoading(true);
       return;
     }
 
@@ -201,6 +223,31 @@ function SetlistEditPage() {
       setLoading(true);
       const data = await fetchSetlistById(id);
       if (data) {
+        // created_by가 null이고 편집 권한이 있으면 현재 사용자로 설정
+        if (!data.created_by && can.editSetlist && profile.id) {
+          try {
+            const { error } = await supabase
+              .from('setlists')
+              .update({ created_by: profile.id })
+              .eq('id', id);
+
+            if (!error) {
+              data.created_by = profile.id;
+            }
+          } catch (err) {
+            console.error('생성자 설정 실패:', err);
+          }
+        }
+
+        // 권한 체크 - 편집 권한이 없고 본인이 만든 콘티도 아니면 view 페이지로 리다이렉트
+        const isOwner = data.created_by === profile.id;
+        if (!can.editSetlist && !isOwner) {
+          toast.error('콘티를 편집할 권한이 없습니다.');
+          navigate({ to: '/worship/setlists/$id/view', params: { id } });
+          setLoading(false);
+          return;
+        }
+
         setSetlist(data);
         setItems(data.setlist_items);
         setOriginalItems(JSON.parse(JSON.stringify(data.setlist_items)));
@@ -217,7 +264,7 @@ function SetlistEditPage() {
     };
 
     loadSetlist();
-  }, [id, fetchSetlistById, navigate, can.editSetlist]);
+  }, [id, fetchSetlistById, navigate, can.editSetlist, profile, authLoading]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -240,6 +287,10 @@ function SetlistEditPage() {
 
   const handleNoteChange = (itemId: string, note: string) => {
     setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, note } : item)));
+  };
+
+  const handleCommentChange = (itemId: string, comment: string) => {
+    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, comment } : item)));
   };
 
   const handleRemoveItem = (itemId: string) => {
@@ -277,11 +328,13 @@ function SetlistEditPage() {
         if (original) {
           const keyChanged = item.selected_key !== original.selected_key;
           const noteChanged = item.note !== original.note;
+          const commentChanged = item.comment !== original.comment;
 
-          if (keyChanged || noteChanged) {
+          if (keyChanged || noteChanged || commentChanged) {
             await updateSetlistItem(item.id, {
               selected_key: item.selected_key || undefined,
               note: item.note || undefined,
+              comment: item.comment || undefined,
             });
           }
         }
@@ -442,7 +495,9 @@ function SetlistEditPage() {
                   item={item}
                   onKeyChange={(key) => handleKeyChange(item.id, key)}
                   onNoteChange={(note) => handleNoteChange(item.id, note)}
+                  onCommentChange={(comment) => handleCommentChange(item.id, comment)}
                   onRemove={() => handleRemoveItem(item.id)}
+                  isOwner={setlist?.created_by === profile?.id}
                 />
               ))}
             </div>

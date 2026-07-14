@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Setlist, SetlistWithItems } from '../types/database';
+import type { Setlist, SetlistWithItems, SetlistWithCreator } from '../types/database';
 
 export function useSetlists() {
-  const [setlists, setSetlists] = useState<Setlist[]>([]);
+  const [setlists, setSetlists] = useState<SetlistWithCreator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -12,14 +12,35 @@ export function useSetlists() {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
+      // 먼저 콘티 목록 조회
+      const { data: setlistsData, error: fetchError } = await supabase
         .from('setlists')
         .select('*')
         .order('date', { ascending: false });
 
       if (fetchError) throw fetchError;
 
-      setSetlists(data || []);
+      // 각 콘티의 생성자 정보 조회
+      const setlistsWithCreator = await Promise.all(
+        (setlistsData || []).map(async (setlist) => {
+          if (!setlist.created_by) {
+            return { ...setlist, creator: null };
+          }
+
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', setlist.created_by)
+            .single();
+
+          return {
+            ...setlist,
+            creator: profile ? { name: profile.name } : null,
+          };
+        })
+      );
+
+      setSetlists(setlistsWithCreator);
     } catch (err) {
       console.error('콘티 목록 조회 실패:', err);
       setError(err instanceof Error ? err.message : '조회 실패');
@@ -71,6 +92,9 @@ export function useSetlists() {
     service_type: string;
     description?: string;
   }): Promise<Setlist> => {
+    // 현재 로그인한 사용자 가져오기
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data, error } = await supabase
       .from('setlists')
       .insert({
@@ -78,6 +102,7 @@ export function useSetlists() {
         date: setlistData.date,
         service_type: setlistData.service_type,
         description: setlistData.description || null,
+        created_by: user?.id || null,
       })
       .select()
       .single();
@@ -146,11 +171,12 @@ export function useSetlists() {
 
   const updateSetlistItem = async (
     itemId: string,
-    data: { selected_key?: string; note?: string; position?: number; annotations?: string }
+    data: { selected_key?: string; note?: string; comment?: string; position?: number; annotations?: string }
   ) => {
     const updateData: Record<string, unknown> = {};
     if (data.selected_key !== undefined) updateData.selected_key = data.selected_key;
     if (data.note !== undefined) updateData.note = data.note;
+    if (data.comment !== undefined) updateData.comment = data.comment;
     if (data.position !== undefined) updateData.position = data.position;
     if (data.annotations !== undefined) updateData.annotations = data.annotations;
 

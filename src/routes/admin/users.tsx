@@ -53,14 +53,25 @@ function AdminUsersPage() {
   }, [isAdmin, loading, navigate]);
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
-    // 본인의 권한은 변경할 수 없음
-    if (userId === profile?.id) {
-      toast.error('자신의 권한은 변경할 수 없습니다.');
-      return;
-    }
-
-    if (!confirm(`정말 이 사용자의 권한을 "${getRoleName(newRole)}"(으)로 변경하시겠습니까?`)) {
-      return;
+    // 본인이 admin에서 다른 역할로 변경하려는 경우 강한 경고
+    if (userId === profile?.id && profile?.role === 'admin' && newRole !== 'admin') {
+      if (!confirm(
+        `⚠️ 경고: 자신의 관리자 권한을 해제하려고 합니다.\n\n` +
+        `관리자 권한을 잃으면 다시 되돌릴 수 없습니다.\n\n` +
+        `정말 자신을 "${getRoleName(newRole)}"(으)로 변경하시겠습니까?`
+      )) {
+        return;
+      }
+    } else if (userId === profile?.id) {
+      // 본인의 다른 권한 변경 시 일반 경고
+      if (!confirm(`자신의 권한을 "${getRoleName(newRole)}"(으)로 변경하시겠습니까?`)) {
+        return;
+      }
+    } else {
+      // 다른 사용자의 권한 변경
+      if (!confirm(`정말 이 사용자의 권한을 "${getRoleName(newRole)}"(으)로 변경하시겠습니까?`)) {
+        return;
+      }
     }
 
     setUpdatingUserId(userId);
@@ -187,22 +198,18 @@ function AdminUsersPage() {
                         {dayjs(user.created_at).format('YYYY.MM.DD')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {isCurrentUser ? (
-                          <span className="text-sm text-gray-400">변경 불가</span>
-                        ) : (
-                          <select
-                            value={user.role}
-                            onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
-                            disabled={isUpdating}
-                            className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {ROLE_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
+                          disabled={isUpdating}
+                          className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {ROLE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                     </tr>
                   );

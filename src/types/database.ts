@@ -120,6 +120,7 @@ export interface SetlistItem {
   position: number;
   selected_key: string | null;
   note: string | null;
+  comment: string | null; // 생성자만 볼 수 있는 멘트
   annotations: string | null; // JSON string of drawing strokes
   created_at: string;
 }
@@ -135,6 +136,12 @@ export interface SetlistItemWithSong extends SetlistItem {
 
 export interface SetlistWithItems extends Setlist {
   setlist_items: SetlistItemWithSong[];
+}
+
+export interface SetlistWithCreator extends Setlist {
+  creator?: {
+    name: string | null;
+  } | null;
 }
 
 // Supabase Database 타입
