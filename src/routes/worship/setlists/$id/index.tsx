@@ -37,7 +37,6 @@ import { useSetlists } from '@/hooks/useSetlists';
 import { useSongs } from '@/hooks/useSongs';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '@/types/database';

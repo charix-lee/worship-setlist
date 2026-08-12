@@ -67,16 +67,16 @@ function NewSongPage() {
       // 1. 곡 생성
       const result = await createSong({
         title: title.trim(),
-        artist: artist.trim() || null,
-        youtube_url: youtubeUrl.trim() || null,
-        lyrics: lyrics.trim() || null,
-        memo: memo.trim() || null,
+        artist: artist.trim() || undefined,
+        youtube_url: youtubeUrl.trim() || undefined,
+        lyrics: lyrics.trim() || undefined,
+        memo: memo.trim() || undefined,
       });
 
       // 2. 악보 파일 업로드
       if (sheetFiles.length > 0) {
         for (const sheet of sheetFiles) {
-          await addSheet(result.id, sheet.key, sheet.file);
+          await addSheet(result.id, sheet.file, sheet.key);
         }
       }
 

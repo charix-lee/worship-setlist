@@ -85,10 +85,10 @@ function EditSongPage() {
     try {
       await updateSong(song.id, {
         title: title.trim(),
-        artist: artist.trim() || null,
-        youtube_url: youtubeUrl.trim() || null,
-        lyrics: lyrics.trim() || null,
-        memo: memo.trim() || null,
+        artist: artist.trim() || undefined,
+        youtube_url: youtubeUrl.trim() || undefined,
+        lyrics: lyrics.trim() || undefined,
+        memo: memo.trim() || undefined,
       });
       toast.success('저장되었습니다!');
       navigate({ to: '/worship/songs/$id/view', params: { id: song.id } });
@@ -122,7 +122,7 @@ function EditSongPage() {
 
     setUploading(true);
     try {
-      await addSheet(song.id, newSheetKey, file);
+      await addSheet(song.id, file, newSheetKey);
       const updated = await fetchSongById(song.id);
       if (updated) setSong(updated);
       toast.success('악보가 추가되었습니다!');

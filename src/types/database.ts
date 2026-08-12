@@ -136,6 +136,9 @@ export interface SetlistItemWithSong extends SetlistItem {
 
 export interface SetlistWithItems extends Setlist {
   setlist_items: SetlistItemWithSong[];
+  creator?: {
+    name: string | null;
+  } | null;
 }
 
 export interface SetlistWithCreator extends Setlist {

@@ -4,22 +4,15 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
 import {
   Download,
-  FileText,
   Loader2,
   Music2,
   Edit2,
-  Type,
-  PenTool,
   X,
   Play,
-  ExternalLink,
-  Check,
-  MessageSquare,
   ArrowLeft,
   User,
   Calendar,
   Copy,
-  Image as ImageIcon,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { usePermissions } from '@/hooks/usePermissions';

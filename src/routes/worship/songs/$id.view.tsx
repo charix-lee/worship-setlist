@@ -7,8 +7,6 @@ import {
   Edit2,
   Loader2,
   Copy,
-  Check,
-  Calendar,
   Download,
   ChevronDown,
   ChevronUp,
@@ -36,7 +34,6 @@ function SongViewPage() {
 
   const [song, setSong] = useState<SongWithSheets | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lyricsCopied, setLyricsCopied] = useState(false);
   const [expandedSheets, setExpandedSheets] = useState<Set<string>>(new Set());
   const [relatedSetlists, setRelatedSetlists] = useState<Setlist[]>([]);
   const [activeTab, setActiveTab] = useState<'sheet' | 'lyrics'>('sheet');
@@ -66,9 +63,7 @@ function SongViewPage() {
     if (!song?.lyrics) return;
     try {
       await navigator.clipboard.writeText(song.lyrics);
-      setLyricsCopied(true);
       toast.success('가사가 복사되었습니다!');
-      setTimeout(() => setLyricsCopied(false), 2000);
     } catch {
       toast.error('복사 실패');
     }
@@ -81,10 +76,6 @@ function SongViewPage() {
     } catch {
       toast.error('링크 복사 실패');
     }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return dayjs(dateStr).format('YYYY년 M월 D일');
   };
 
   const downloadSheet = async (fileUrl: string, musicKey: string) => {
