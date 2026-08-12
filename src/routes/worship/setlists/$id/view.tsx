@@ -13,6 +13,9 @@ import {
   User,
   Calendar,
   Copy,
+  ChevronDown,
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -360,6 +363,10 @@ function SetlistViewPage() {
   // 악보 내보내기
   const [exportingSheets, setExportingSheets] = useState(false);
 
+  // 다운로드 드롭다운
+  const [downloadDropdownOpen, setDownloadDropdownOpen] = useState(false);
+  const downloadDropdownRef = useRef<HTMLDivElement>(null);
+
   const toggleEditing = (itemId: string) => {
     setEditingItems((prev) => {
       const next = new Set(prev);
@@ -634,6 +641,20 @@ function SetlistViewPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [worshipMode, setlist, currentIndex]);
 
+  // 드롭다운 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (downloadDropdownRef.current && !downloadDropdownRef.current.contains(event.target as Node)) {
+        setDownloadDropdownOpen(false);
+      }
+    };
+
+    if (downloadDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [downloadDropdownOpen]);
+
   const openWorshipMode = () => {
     setCurrentIndex(0);
     setWorshipMode(true);
@@ -790,34 +811,38 @@ function SetlistViewPage() {
           </div>
 
           {/* Title & Actions */}
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
+          <div className="flex items-start justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => navigate({ to: '/worship/setlists' })}
-                className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors bg-white"
+                className="w-10 h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors bg-white"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-700" />
               </button>
-              <h1 className="text-[24px] font-bold text-gray-900">{formatDate(setlist.date)}</h1>
-              <div
-                className="px-2.5 py-1 rounded-md"
-                style={{ backgroundColor: getServiceTypeColors(setlist.service_type).bg }}
-              >
-                <span
-                  className="text-[13px] font-semibold"
-                  style={{ color: getServiceTypeColors(setlist.service_type).text }}
-                >
-                  {setlist.service_type}
-                </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-[24px] font-bold text-gray-900">{formatDate(setlist.date)}</h1>
+                  <div
+                    className="px-2.5 py-1 rounded-md flex-shrink-0"
+                    style={{ backgroundColor: getServiceTypeColors(setlist.service_type).bg }}
+                  >
+                    <span
+                      className="text-[13px] font-semibold"
+                      style={{ color: getServiceTypeColors(setlist.service_type).text }}
+                    >
+                      {setlist.service_type}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 justify-end max-w-md">
               <button
                 onClick={openWorshipMode}
                 className="flex items-center gap-2 px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
               >
                 <Play className="w-4 h-4" />
-                찬양 모드
+                찬양
               </button>
               <button
                 onClick={copySongList}
@@ -835,34 +860,59 @@ function SetlistViewPage() {
                   편집
                 </button>
               )}
-              <button
-                onClick={exportSheetsPDF}
-                disabled={exportingSheets}
-                className="flex items-center gap-2 px-3.5 py-2.5 border border-[#6366F1] rounded-lg text-sm font-semibold text-[#6366F1] hover:bg-gray-50 transition-colors bg-white disabled:opacity-50"
-              >
-                {exportingSheets ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 stroke-[#6366F1]" />
+
+              {/* 다운로드 드롭다운 */}
+              <div className="relative" ref={downloadDropdownRef}>
+                <button
+                  onClick={() => setDownloadDropdownOpen(!downloadDropdownOpen)}
+                  disabled={exporting || exportingSheets}
+                  className="flex items-center gap-2 px-3.5 py-2.5 border border-primary-600 rounded-lg text-sm font-semibold text-primary-600 hover:bg-primary-50 transition-colors bg-white disabled:opacity-50"
+                >
+                  {(exporting || exportingSheets) ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  
+                  <ChevronDown className={`w-4 h-4 transition-transform ${downloadDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {downloadDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10">
+                    <button
+                      onClick={() => {
+                        exportSheetsPDF();
+                        setDownloadDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <FileText className="w-4 h-4" />
+                      악보 PDF
+                    </button>
+                    <button
+                      onClick={() => {
+                        exportSheetsImages();
+                        setDownloadDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      악보 이미지
+                    </button>
+                    <div className="h-px bg-gray-200 my-1" />
+                    <button
+                      onClick={() => {
+                        handleExportPDF();
+                        setDownloadDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      전체 PDF
+                    </button>
+                  </div>
                 )}
-                악보 PDF
-              </button>
-              <button
-                onClick={exportSheetsImages}
-                disabled={exportingSheets}
-                className="flex items-center gap-2 px-3.5 py-2.5 border border-[#6366F1] rounded-lg text-sm font-semibold text-[#6366F1] hover:bg-gray-50 transition-colors bg-white disabled:opacity-50"
-              >
-                {exportingSheets ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 stroke-[#6366F1]" />
-                )}
-                악보 이미지
-              </button>
-              
-              <Button onClick={handleExportPDF} loading={exporting} icon={!exporting ? <Download className="w-4 h-4" /> : undefined}>
-                전체 PDF
-              </Button>
+              </div>
             </div>
           </div>
 
