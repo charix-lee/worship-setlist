@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useSongs } from '@/hooks/useSongs';
 import { usePermissions } from '@/hooks/usePermissions';
-import SongModal from '@/components/SongModal';
 import Button from '@/components/Button';
 import LyricsModal from '@/components/LyricsModal';
 import type { SongWithSheets } from '@/types/database';
@@ -30,17 +29,11 @@ function SongsPage() {
     songs,
     loading,
     fetchSongs,
-    createSong,
-    updateSong,
     deleteSong,
-    addSheet,
-    removeSheet,
   } = useSongs();
   const { can } = usePermissions();
 
   const [search, setSearch] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingSong, setEditingSong] = useState<SongWithSheets | null>(null);
   const [lyricsModalSong, setLyricsModalSong] = useState<SongWithSheets | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -84,16 +77,6 @@ function SongsPage() {
     }
   };
 
-  const openEditModal = (song: SongWithSheets) => {
-    setEditingSong(song);
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditingSong(null);
-  };
-
   return (
     <div className="p-4 lg:p-6">
       <div className="mb-6">
@@ -115,10 +98,7 @@ function SongsPage() {
         </div>
         {can.createSong && (
           <Button
-            onClick={() => {
-              setEditingSong(null);
-              setModalOpen(true);
-            }}
+            onClick={() => navigate({ to: '/worship/songs/new' })}
             icon={<Plus className="w-5 h-5" />}
             size="lg"
           >
@@ -139,7 +119,7 @@ function SongsPage() {
           </p>
           {!search && can.createSong && (
             <button
-              onClick={() => setModalOpen(true)}
+              onClick={() => navigate({ to: '/worship/songs/new' })}
               className="mt-3 text-primary-600 hover:text-primary-700 text-sm font-medium"
             >
               첫 번째 곡 추가하기
@@ -221,7 +201,7 @@ function SongsPage() {
                     )}
                     {can.editSong && (
                       <button
-                        onClick={() => openEditModal(song)}
+                        onClick={() => navigate({ to: '/worship/songs/$id/edit', params: { id: song.id } })}
                         className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
                         title="수정"
                       >
@@ -287,22 +267,6 @@ function SongsPage() {
           )}
         </div>
       )}
-
-      <SongModal
-        isOpen={modalOpen}
-        onClose={closeModal}
-        song={editingSong}
-        onSave={async (data) => {
-          if (editingSong) {
-            await updateSong(editingSong.id, data);
-            return { id: editingSong.id };
-          } else {
-            return await createSong(data);
-          }
-        }}
-        onAddSheet={addSheet}
-        onRemoveSheet={removeSheet}
-      />
 
       {lyricsModalSong && lyricsModalSong.lyrics && (
         <LyricsModal

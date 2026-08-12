@@ -223,21 +223,6 @@ function SetlistEditPage() {
       setLoading(true);
       const data = await fetchSetlistById(id);
       if (data) {
-        // created_by가 null이고 편집 권한이 있으면 현재 사용자로 설정
-        if (!data.created_by && can.editSetlist && profile.id) {
-          try {
-            const { error } = await supabase
-              .from('setlists')
-              .update({ created_by: profile.id })
-              .eq('id', id);
-
-            if (!error) {
-              data.created_by = profile.id;
-            }
-          } catch (err) {
-            console.error('생성자 설정 실패:', err);
-          }
-        }
 
         // 권한 체크 - 편집 권한이 없고 본인이 만든 콘티도 아니면 view 페이지로 리다이렉트
         const isOwner = data.created_by === profile.id;

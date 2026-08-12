@@ -15,6 +15,11 @@ import {
   ExternalLink,
   Check,
   MessageSquare,
+  ArrowLeft,
+  User,
+  Calendar,
+  Copy,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -23,8 +28,10 @@ import Button from '@/components/Button';
 import DrawingCanvas from '@/components/DrawingCanvas';
 import LyricsModal from '@/components/LyricsModal';
 import type { SetlistWithItems, SetlistItemWithSong } from '@/types/database';
+import { getServiceTypeColors } from '@/utils/colors';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
+import JSZip from 'jszip';
 
 dayjs.locale('ko');
 
@@ -357,6 +364,9 @@ function SetlistViewPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showComments, setShowComments] = useState(true); // 멘트 표시 토글
 
+  // 악보 내보내기
+  const [exportingSheets, setExportingSheets] = useState(false);
+
   const toggleEditing = (itemId: string) => {
     setEditingItems((prev) => {
       const next = new Set(prev);
@@ -640,6 +650,128 @@ function SetlistViewPage() {
     setWorshipMode(false);
   };
 
+  const copySongList = async () => {
+    if (!setlist || setlist.setlist_items.length === 0) {
+      toast.error('복사할 곡이 없습니다.');
+      return;
+    }
+
+    const songList = setlist.setlist_items
+      .map((item, index) => {
+        const youtubeLink = item.song.youtube_url || '';
+        return `${index + 1}. ${item.song.title}\n${youtubeLink}`;
+      })
+      .join('\n\n');
+
+    try {
+      await navigator.clipboard.writeText(songList);
+      toast.success('곡 리스트가 복사되었습니다!');
+    } catch {
+      toast.error('복사 실패');
+    }
+  };
+
+  const exportSheetsPDF = async () => {
+    if (!setlist || setlist.setlist_items.length === 0) {
+      toast.error('악보가 없습니다.');
+      return;
+    }
+
+    setExportingSheets(true);
+    try {
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      let isFirstPage = true;
+
+      for (const item of setlist.setlist_items) {
+        const sheet = item.song.song_sheets.find((s) => s.music_key === item.selected_key);
+        if (!sheet?.file_url) continue;
+        if (sheet.file_url.toLowerCase().endsWith('.pdf')) continue;
+
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const image = new Image();
+          image.crossOrigin = 'anonymous';
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = sheet.file_url;
+        });
+
+        const maxWidth = pageWidth - margin * 2;
+        const maxHeight = pageHeight - margin * 2;
+        const aspectRatio = img.width / img.height;
+
+        let finalWidth = maxWidth;
+        let finalHeight = finalWidth / aspectRatio;
+
+        if (finalHeight > maxHeight) {
+          finalHeight = maxHeight;
+          finalWidth = finalHeight * aspectRatio;
+        }
+
+        if (!isFirstPage) {
+          pdf.addPage();
+        }
+        isFirstPage = false;
+
+        const xOffset = margin + (maxWidth - finalWidth) / 2;
+        pdf.addImage(sheet.file_url, 'PNG', xOffset, margin, finalWidth, finalHeight);
+      }
+
+      const fileName = `${dayjs(setlist.date).format('YYMMDD')}_악보.pdf`;
+      pdf.save(fileName);
+      toast.success('PDF가 다운로드되었습니다.');
+    } catch (error) {
+      console.error('PDF 생성 실패:', error);
+      toast.error('PDF 생성에 실패했습니다.');
+    } finally {
+      setExportingSheets(false);
+    }
+  };
+
+  const exportSheetsImages = async () => {
+    if (!setlist || setlist.setlist_items.length === 0) {
+      toast.error('악보가 없습니다.');
+      return;
+    }
+
+    setExportingSheets(true);
+    try {
+      const zip = new JSZip();
+
+      for (const item of setlist.setlist_items) {
+        const sheet = item.song.song_sheets.find((s) => s.music_key === item.selected_key);
+        if (!sheet?.file_url) continue;
+        if (sheet.file_url.toLowerCase().endsWith('.pdf')) continue;
+
+        // 원본 이미지를 blob으로 가져오기
+        const response = await fetch(sheet.file_url);
+        const blob = await response.blob();
+
+        const fileName = `${item.position}_${item.song.title}_${item.selected_key}.png`;
+        zip.file(fileName, blob);
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = window.URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${dayjs(setlist.date).format('YYMMDD')}_악보.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('이미지가 다운로드되었습니다.');
+    } catch (error) {
+      console.error('이미지 내보내기 실패:', error);
+      toast.error('이미지 내보내기에 실패했습니다.');
+    } finally {
+      setExportingSheets(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -651,195 +783,255 @@ function SetlistViewPage() {
   if (!setlist) return null;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="sticky top-0 bg-white border-b border-gray-200 z-10 print:hidden">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-end gap-2">
-          <Button
-            variant="secondary"
-            onClick={openWorshipMode}
-            icon={<Play className="w-4 h-4" />}
-          >
-            찬양
-          </Button>
-          {can.editSetlist && (
-            <button
-              onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
-              className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
-              title="편집"
-            >
-              <Edit2 className="w-5 h-5" />
-            </button>
-          )}
-          <Button onClick={handleExportPDF} loading={exporting} icon={!exporting ? <Download className="w-4 h-4" /> : undefined}>
-            PDF
-          </Button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header Section */}
+      <div className="border-b border-gray-200 bg-white">
+        <div className="max-w-7xl mx-auto px-8 pb-5 pt-6">
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-2 text-[13px] mb-4">
+            <span className="text-gray-500 font-medium">찬양팀</span>
+            <span className="text-gray-400">&gt;</span>
+            <span className="text-gray-500 font-medium">콘티목록</span>
+            <span className="text-gray-400">&gt;</span>
+            <span className="text-primary-600 font-semibold">{formatDate(setlist.date)}</span>
+          </div>
+
+          {/* Title & Actions */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate({ to: '/worship/setlists' })}
+                className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors bg-white"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-700" />
+              </button>
+              <h1 className="text-[24px] font-bold text-gray-900">{formatDate(setlist.date)}</h1>
+              <div
+                className="px-2.5 py-1 rounded-md"
+                style={{ backgroundColor: getServiceTypeColors(setlist.service_type).bg }}
+              >
+                <span
+                  className="text-[13px] font-semibold"
+                  style={{ color: getServiceTypeColors(setlist.service_type).text }}
+                >
+                  {setlist.service_type}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={openWorshipMode}
+                className="flex items-center gap-2 px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+              >
+                <Play className="w-4 h-4" />
+                찬양 모드
+              </button>
+              <button
+                onClick={copySongList}
+                className="flex items-center gap-2 px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+              >
+                <Copy className="w-4 h-4" />
+                곡 리스트 복사
+              </button>
+              {can.editSetlist && (
+                <button
+                  onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
+                  className="flex items-center gap-2 px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  편집
+                </button>
+              )}
+              <button
+                onClick={exportSheetsPDF}
+                disabled={exportingSheets}
+                className="flex items-center gap-2 px-3.5 py-2.5 border border-[#6366F1] rounded-lg text-sm font-semibold text-[#6366F1] hover:bg-gray-50 transition-colors bg-white disabled:opacity-50"
+              >
+                {exportingSheets ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 stroke-[#6366F1]" />
+                )}
+                악보 PDF
+              </button>
+              <button
+                onClick={exportSheetsImages}
+                disabled={exportingSheets}
+                className="flex items-center gap-2 px-3.5 py-2.5 border border-[#6366F1] rounded-lg text-sm font-semibold text-[#6366F1] hover:bg-gray-50 transition-colors bg-white disabled:opacity-50"
+              >
+                {exportingSheets ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 stroke-[#6366F1]" />
+                )}
+                악보 이미지
+              </button>
+              
+              <Button onClick={handleExportPDF} loading={exporting} icon={!exporting ? <Download className="w-4 h-4" /> : undefined}>
+                전체 PDF
+              </Button>
+            </div>
+          </div>
+
+          {/* Metadata */}
+          <div className="flex items-center gap-5 pb-2">
+            {setlist.creator?.name && (
+              <div className="flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-[13px] text-gray-600">{setlist.creator.name}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-[13px] text-gray-600">{dayjs(setlist.created_at).format('YYYY. M. D.')}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto p-4 lg:p-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8">
-          <div className="text-center mb-8 pb-6 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{formatDate(setlist.date)}</h1>
-            <p className="text-lg text-primary-600 font-medium">{setlist.service_type}</p>
-            {setlist.description && <p className="mt-2 text-gray-500">{setlist.description}</p>}
-          </div>
-
-          {setlist.setlist_items.length === 0 ? (
-            <div className="text-center py-12">
-              <Music2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">등록된 곡이 없습니다.</p>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-8 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2.5">
+            <Music2 className="w-5 h-5 text-gray-900" />
+            <h2 className="text-[17px] font-bold text-gray-900">예배 찬양 콘티</h2>
+            <div className="h-max bg-primary-600 px-2 pb-1 rounded-[100px]">
+              <span className="text-[12px] font-semibold text-white">{setlist.setlist_items.length}곡</span>
             </div>
-          ) : (
-            <div className="space-y-8">
-              {setlist.setlist_items.map((item) => {
-                // 선택된 키의 악보가 있으면 사용, 없으면 첫 번째 악보 자동 표시
-                const sheet = item.selected_key
-                  ? item.song.song_sheets.find((s) => s.music_key === item.selected_key)
-                  : item.song.song_sheets[0];
-                const displaySheet = sheet || item.song.song_sheets[0];
-                const isPdf = displaySheet?.file_url?.toLowerCase().endsWith('.pdf');
-                const isImage = displaySheet && !isPdf;
+          </div>
+        </div>
 
-                return (
-                  <div key={item.id} className="border-b border-gray-200 pb-8 last:border-b-0 last:pb-0 ml-14">
-                    <div className="gap-4 mb-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-primary-600 text-white rounded-[8px] flex items-center justify-center flex-shrink-0 font-bold">
-                          {item.position}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-end">
-                              <Link
-                                to="/worship/songs/$id/view"
-                                params={{ id: item.song.id }}
-                                className="font-semibold text-gray-900 text-[20px] mr-2 hover:text-primary-600 transition-colors"
-                              >
-                                {item.song.title}
-                              </Link>
-                              <p className="text-gray-500 text-[12px] mb-1">{item.song.artist || ''}</p>
-                            </div>
-                            {(item.selected_key || displaySheet?.music_key) && (
-                              <span className="px-3 py-1 bg-primary-100 text-primary-700 font-bold rounded-lg text-lg flex-shrink-0">
-                                {item.selected_key || displaySheet?.music_key}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="ml-10">
-                        {item.note && (
-                          <p className="w-full mt-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg inline-block whitespace-pre-wrap">
-                            <span className="font-medium text-gray-700">메모:</span> {item.note}
-                          </p>
-                        )}
-                        {item.comment && setlist.created_by === profile?.id && (
-                          <p className="w-full mt-2 text-sm text-gray-600 bg-orange-50 px-3 py-2 rounded-lg inline-block border border-orange-200 whitespace-pre-wrap">
-                            {item.comment}
-                          </p>
-                        )}
-                      </div>
+        {setlist.setlist_items.length === 0 ? (
+          <div className="text-center py-12">
+            <Music2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">등록된 곡이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {setlist.setlist_items.map((item) => {
+              const sheet = item.selected_key
+                ? item.song.song_sheets.find((s) => s.music_key === item.selected_key)
+                : item.song.song_sheets[0];
+              const displaySheet = sheet || item.song.song_sheets[0];
+              const isPdf = displaySheet?.file_url?.toLowerCase().endsWith('.pdf');
+              const isImage = displaySheet && !isPdf;
 
+              return (
+                <div key={item.id} className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+                  {/* Song Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-8 h-8 bg-primary-600 text-white rounded-2xl flex items-center justify-center flex-shrink-0 font-bold text-[15px]">
+                        {item.position}
+                      </div>
+                      <Link
+                        to="/worship/songs/$id/view"
+                        params={{ id: item.song.id }}
+                        className="text-[18px] font-bold text-gray-900 hover:text-primary-600 transition-colors"
+                      >
+                        {item.song.title}
+                      </Link>
+                      {item.song.artist && (
+                        <span className="text-[13px] text-gray-500">{item.song.artist}</span>
+                      )}
                     </div>
-
-                    <div className="">
-                      {displaySheet ? (
-                        <>
-                          <div className="flex justify-end gap-2 mb-2 print:hidden">
-                            {item.song.youtube_url && (
-                              <a
-                                href={item.song.youtube_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                                유튜브
-                              </a>
-                            )}
-                            {item.song.lyrics && (
-                              <button
-                                onClick={() => setLyricsItem(item)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                              >
-                                <Type className="w-4 h-4" />
-                                가사보기
-                              </button>
-                            )}
-                            {can.editSetlist && (
-                              <button
-                                onClick={() => toggleEditing(item.id)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${editingItems.has(item.id)
-                                  ? 'bg-primary-600 text-white'
-                                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                                  }`}
-                              >
-                                {editingItems.has(item.id) ? (
-                                  <>
-                                    <Check className="w-4 h-4" />
-                                    완료
-                                  </>
-                                ) : (
-                                  <>
-                                    <PenTool className="w-4 h-4" />
-                                    그리기
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                            {isPdf ? (
-                              <iframe src={displaySheet.file_url} className="w-full h-[600px]" title={`${item.song.title} 악보`} />
-                            ) : isImage ? (
-                              <DrawingCanvas
-                                imageUrl={displaySheet.file_url}
-                                annotations={item.annotations || undefined}
-                                onSave={(annotations) => handleSaveAnnotations(item.id, annotations)}
-                                readOnly={!can.editSetlist || !editingItems.has(item.id)}
-                              />
-                            ) : null}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="bg-gray-50 rounded-lg p-8 text-center">
-                          <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                          <p className="text-sm text-gray-400">등록된 악보가 없습니다</p>
-                          <div className="mt-3 flex items-center justify-center gap-2">
-                            {item.song.youtube_url && (
-                              <a
-                                href={item.song.youtube_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                                유튜브
-                              </a>
-                            )}
-                            {item.song.lyrics && (
-                              <button
-                                onClick={() => setLyricsItem(item)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                              >
-                                <Type className="w-4 h-4" />
-                                가사보기
-                              </button>
-                            )}
-                          </div>
+                    <div className="flex items-center">
+                      {(item.selected_key || displaySheet?.music_key) && (
+                        <div className="bg-gray-100 px-2.5 py-1 rounded-md">
+                          <span className="text-[13px] font-semibold text-gray-600">
+                            {item.selected_key || displaySheet?.music_key} Key
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
 
-          <div className="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-400">
-            찬양팀 콘티 · {dayjs().format('YYYY. M. D.')}
+                  {/* Divider */}
+                  <div className="h-px bg-gray-100 mb-4" />
+
+                  {/* Song Details */}
+                  <div className="flex flex-col gap-2.5 py-3.5">
+                    {/* Memo Section */}
+                    {item.note && (
+                      <div className="bg-yellow-50 px-3.5 py-3 rounded-lg">
+                        <p className="text-[12px] font-bold text-yellow-900 uppercase mb-1.5">메모</p>
+                        <p className="text-[14px] text-yellow-900 whitespace-pre-wrap">{item.note}</p>
+                      </div>
+                    )}
+
+                    {/* Ment Section */}
+                    {item.comment && setlist.created_by === profile?.id && (
+                      <div className="bg-purple-50 px-3.5 py-3 rounded-lg">
+                        <p className="text-[12px] font-bold text-purple-900 uppercase mb-1.5">멘트</p>
+                        <p className="text-[14px] text-purple-900 whitespace-pre-wrap">{item.comment}</p>
+                      </div>
+                    )}
+
+                    {/* Action Badges */}
+                    <div className="flex items-center justify-end gap-2 pt-3.5">
+                      {item.song.youtube_url && (
+                        <a
+                          href={item.song.youtube_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-red-100 text-red-600 text-[13px] font-semibold rounded-lg hover:bg-red-200 transition-colors"
+                        >
+                          유튜브
+                        </a>
+                      )}
+                      {item.song.lyrics && (
+                        <button
+                          onClick={() => setLyricsItem(item)}
+                          className="px-3 py-1.5 bg-green-100 text-green-700 text-[13px] font-semibold rounded-lg hover:bg-green-200 transition-colors"
+                        >
+                          가사보기
+                        </button>
+                      )}
+                      {can.editSetlist && (
+                        <button
+                          onClick={() => toggleEditing(item.id)}
+                          className={`px-3 py-1.5 text-[13px] font-semibold rounded-lg transition-colors ${
+                            editingItems.has(item.id)
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                          }`}
+                        >
+                          {editingItems.has(item.id) ? '완료' : '그리기'}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Sheet Preview */}
+                    {displaySheet ? (
+                      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        {isPdf ? (
+                          <iframe
+                            src={displaySheet.file_url}
+                            className="w-full h-[800px]"
+                            title={`${item.song.title} 악보`}
+                          />
+                        ) : isImage ? (
+                          <DrawingCanvas
+                            imageUrl={displaySheet.file_url}
+                            annotations={item.annotations || undefined}
+                            onSave={(annotations) => handleSaveAnnotations(item.id, annotations)}
+                            readOnly={!can.editSetlist || !editingItems.has(item.id)}
+                          />
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-lg p-6 h-[300px] flex flex-col items-center justify-center">
+                        <Music2 className="w-8 h-8 text-gray-400 mb-3" />
+                        <p className="text-[16px] font-semibold text-gray-600 mb-1">악보 미리보기</p>
+                        <p className="text-[13px] text-gray-400">PDF 파일이 업로드되면 여기에 표시됩니다.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
       </div>
 
       {/* 가사 모달 */}
@@ -855,43 +1047,57 @@ function SetlistViewPage() {
 
       {/* 찬양 모드 (전체화면) */}
       {worshipMode && setlist && setlist.setlist_items.length > 0 && (
-        <div className="fixed inset-0 bg-black z-[100] flex flex-col">
+        <div className="fixed inset-0 bg-[#0b0914] z-[100] flex flex-col">
           {/* 상단 바 */}
-          <div className="flex items-center justify-between px-4 py-3 bg-black/80">
-            <div className="flex items-center gap-3 text-white flex-1 min-w-0">
-              <span className="px-2 py-1 bg-primary-600 rounded text-sm font-bold flex-shrink-0">
-                {currentIndex + 1} / {setlist.setlist_items.length}
-              </span>
-              <span className="font-medium flex-shrink-0">
-                {setlist.setlist_items[currentIndex]?.song.title}
-              </span>
-              {setlist.setlist_items[currentIndex]?.selected_key && (
-                <span className="px-2 py-0.5 bg-white/20 rounded text-sm flex-shrink-0">
-                  {setlist.setlist_items[currentIndex]?.selected_key}
+          <div className="h-[72px] bg-[#101222] border-b border-[#202442] flex items-center justify-between px-8 py-4.5">
+            <div className="flex items-center gap-4">
+              <div className="px-3 py-1 bg-primary-600 rounded-lg">
+                <span className="text-sm font-bold text-white">
+                  {currentIndex + 1} / {setlist.setlist_items.length}
                 </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-[22px] font-bold text-white">
+                  {setlist.setlist_items[currentIndex]?.song.title}
+                </h2>
+                {setlist.setlist_items[currentIndex]?.song.artist && (
+                  <span className="text-sm text-gray-400">
+                    {setlist.setlist_items[currentIndex]?.song.artist}
+                  </span>
+                )}
+              </div>
+              {setlist.setlist_items[currentIndex]?.selected_key && (
+                <div className="px-3 pb-1 bg-[#181b34] border border-primary-600 rounded-lg">
+                  <span className="text-xs font-semibold text-primary-400">
+                    {setlist.setlist_items[currentIndex]?.selected_key}
+                  </span>
+                </div>
               )}
               {setlist.setlist_items[currentIndex]?.note && (
-                <span className="px-2 py-0.5 bg-gray-500/80 text-white rounded text-sm truncate">
+                <span className="text-base text-gray-100">
                   {setlist.setlist_items[currentIndex]?.note}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              {setlist.created_by === profile?.id && (
+            <div className="flex items-center gap-6">
+              {setlist.created_by === profile?.id && setlist.setlist_items[currentIndex]?.comment && (
                 <button
                   onClick={() => setShowComments(!showComments)}
-                  className={`p-2 transition-colors flex-shrink-0 rounded ${showComments
-                    ? 'bg-orange-500 text-white'
-                    : 'text-white/70 hover:text-white'
-                    }`}
-                  title={showComments ? '멘트 숨기기' : '멘트 표시'}
+                  className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors ${
+                    showComments
+                      ? 'bg-purple-200 text-purple-900'
+                      : 'bg-purple-200/50 text-purple-700 hover:bg-purple-200'
+                  }`}
                 >
-                  <MessageSquare className="w-5 h-5" />
+                  {showComments && (
+                    <div className="w-2 h-2 bg-purple-900 rounded-full" />
+                  )}
+                  <span className="text-[13px] font-bold">멘트</span>
                 </button>
               )}
               <button
                 onClick={closeWorshipMode}
-                className="p-2 text-white/70 hover:text-white transition-colors flex-shrink-0"
+                className="text-white/70 hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -899,14 +1105,14 @@ function SetlistViewPage() {
           </div>
 
           {/* 악보 영역 */}
-          <div className="flex-1 flex items-center justify-center bg-white overflow-hidden relative">
+          <div className="flex-1 overflow-hidden relative bg-[#faf9f0]">
             {/* 이전 클릭 영역 */}
             {currentIndex > 0 && (
               <button
                 onClick={() => setCurrentIndex(currentIndex - 1)}
-                className="absolute left-0 top-0 bottom-0 w-1/4 z-10 cursor-w-resize opacity-0 hover:opacity-100 hover:bg-black/5 transition-opacity flex items-center justify-start pl-4"
+                className="absolute left-0 top-0 bottom-0 w-1/4 z-10 cursor-w-resize opacity-0 hover:opacity-100 hover:bg-black/20 transition-opacity flex items-center justify-start pl-8"
               >
-                <span className="text-gray-400 text-4xl">‹</span>
+                <span className="text-white/50 text-5xl">‹</span>
               </button>
             )}
 
@@ -914,9 +1120,9 @@ function SetlistViewPage() {
             {currentIndex < setlist.setlist_items.length - 1 && (
               <button
                 onClick={() => setCurrentIndex(currentIndex + 1)}
-                className="absolute right-0 top-0 bottom-0 w-1/4 z-10 cursor-e-resize opacity-0 hover:opacity-100 hover:bg-black/5 transition-opacity flex items-center justify-end pr-4"
+                className="absolute right-0 top-0 bottom-0 w-1/4 z-10 cursor-e-resize opacity-0 hover:opacity-100 hover:bg-black/20 transition-opacity flex items-center justify-end pr-8"
               >
-                <span className="text-gray-400 text-4xl">›</span>
+                <span className="text-white/50 text-5xl">›</span>
               </button>
             )}
 
@@ -929,9 +1135,13 @@ function SetlistViewPage() {
 
               if (!displaySheet) {
                 return (
-                  <div className="text-center text-gray-400">
-                    <FileText className="w-16 h-16 mx-auto mb-4" />
-                    <p>악보가 없습니다</p>
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-5">
+                    <div className="w-16 h-16 bg-[#efefde] rounded-full flex items-center justify-center">
+                      <Music2 className="w-8 h-8 text-[#64748b]" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-gray-900 mb-2">악보가 여기에 표시됩니다</p>
+                    </div>
                   </div>
                 );
               }
@@ -940,34 +1150,38 @@ function SetlistViewPage() {
 
               if (isPdf) {
                 return (
-                  <iframe
-                    src={displaySheet.file_url}
-                    className="w-full h-full"
-                    title={`${item.song.title} 악보`}
-                  />
+                  <div className="w-full h-full overflow-hidden">
+                    <iframe
+                      src={displaySheet.file_url}
+                      className="w-full h-full"
+                      title={`${item.song.title} 악보`}
+                    />
+                  </div>
                 );
               }
 
               return (
-                <WorshipModeSheet
-                  key={item.id}
-                  imageUrl={displaySheet.file_url}
-                  annotations={item.annotations}
-                  title={item.song.title}
-                />
+                <div className="w-full h-full overflow-hidden">
+                  <WorshipModeSheet
+                    key={item.id}
+                    imageUrl={displaySheet.file_url}
+                    annotations={item.annotations}
+                    title={item.song.title}
+                  />
+                </div>
               );
             })()}
 
-            {/* 멘트 영역 - 악보 위에 오버레이 */}
+            {/* 멘트 영역 - 악보 위 오버레이 */}
             {setlist.setlist_items[currentIndex]?.comment && setlist.created_by === profile?.id && showComments && (
-              <div className="absolute bottom-0 left-0 right-0 bg-orange-500/95 text-white px-6 py-4 border-t-4 border-orange-600 z-20">
-                <div className="max-w-4xl mx-auto">
-                  <div className="flex items-start gap-3">
-                    <MessageSquare className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                    <p className="text-lg whitespace-pre-wrap leading-relaxed">
-                      {setlist.setlist_items[currentIndex]?.comment}
-                    </p>
+              <div className="absolute bottom-0 left-0 right-0 bg-[rgba(19,17,34,0.85)] backdrop-blur-lg border-t border-[#1d1a39] px-8 py-4 z-20">
+                <div className="flex flex-col gap-2">
+                  <div className="px-2.5 py-1 bg-purple-200 rounded-md w-fit">
+                    <span className="text-[13px] font-bold text-purple-900">멘트</span>
                   </div>
+                  <p className="text-base text-gray-100 leading-relaxed whitespace-pre-wrap">
+                    {setlist.setlist_items[currentIndex]?.comment}
+                  </p>
                 </div>
               </div>
             )}

@@ -9,7 +9,7 @@ import {
   Edit2,
   Trash2,
   Loader2,
-  Clock,
+  FileMusic,
   User,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
@@ -17,6 +17,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import { SERVICE_TYPES } from '@/types/database';
+import { getServiceTypeColors } from '@/utils/colors';
 import toast from 'react-hot-toast';
 
 dayjs.locale('ko');
@@ -116,71 +117,80 @@ function SetlistsPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {Object.entries(groupedSetlists).map(([month, monthSetlists]) => (
-            <div key={month}>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">
-                {month.replace('-', '년 ')}월
-              </h2>
+          {Object.entries(groupedSetlists).map(([month, monthSetlists]) => {
+            const [year, monthNum] = month.split('-');
+            return (
+              <div key={month}>
+                <h2 className="text-sm font-medium text-gray-500 mb-3">
+                  {year}년 {parseInt(monthNum)}월
+                </h2>
               <div className="space-y-3">
-                {monthSetlists.map((setlist) => (
-                  <div
-                    key={setlist.id}
-                    className="bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300 transition-colors cursor-pointer"
-                    onClick={() => navigate({ to: '/worship/setlists/$id/view', params: { id: setlist.id } })}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Calendar className="w-6 h-6 text-primary-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-gray-900">{formatDate(setlist.date)}</h3>
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded">
-                            {setlist.service_type}
-                          </span>
+                {monthSetlists.map((setlist) => {
+                  const colors = getServiceTypeColors(setlist.service_type);
+                  return (
+                    <div
+                      key={setlist.id}
+                      className="bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300 transition-colors cursor-pointer"
+                      onClick={() => navigate({ to: '/worship/setlists/$id/view', params: { id: setlist.id } })}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <FileMusic className="w-6 h-6 text-primary-600" />
                         </div>
-                        {setlist.description && (
-                          <p className="text-sm text-gray-500 truncate">{setlist.description}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {dayjs(setlist.created_at).format('YYYY. M. D.')}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium text-gray-900">{formatDate(setlist.date)}</h3>
+                            <span
+                              className="px-2 py-0.5 text-xs font-medium rounded"
+                              style={{ backgroundColor: colors.bg, color: colors.text }}
+                            >
+                              {setlist.service_type}
+                            </span>
                           </div>
-                          {setlist.creator?.name && (
+                          {setlist.description && (
+                            <p className="text-sm text-gray-500 truncate mb-1">{setlist.description}</p>
+                          )}
+                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                            {setlist.creator?.name && (
+                              <div className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {setlist.creator.name}
+                              </div>
+                            )}
                             <div className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              {setlist.creator.name}
+                              <Calendar className="w-3 h-3" />
+                              {dayjs(setlist.created_at).format('YYYY. M. D.')}
                             </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          {can.editSetlist && (
+                            <button
+                              onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: setlist.id } })}
+                              className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                              title="편집"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          {can.deleteSetlist && (
+                            <button
+                              onClick={() => handleDelete(setlist.id, setlist.title)}
+                              className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        {can.editSetlist && (
-                          <button
-                            onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: setlist.id } })}
-                            className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
-                            title="편집"
-                          >
-                            <Edit2 className="w-5 h-5" />
-                          </button>
-                        )}
-                        {can.deleteSetlist && (
-                          <button
-                            onClick={() => handleDelete(setlist.id, setlist.title)}
-                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                            title="삭제"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

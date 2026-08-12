@@ -3,27 +3,22 @@ import { createFileRoute, useParams, useNavigate, Link } from '@tanstack/react-r
 import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
 import {
-  ArrowLeft,
   Music2,
-  PlayCircle,
   Edit2,
-  FileText,
   Loader2,
-  ExternalLink,
   Copy,
   Check,
-  User,
   Calendar,
-  MessageSquare,
   Download,
   ChevronDown,
   ChevronUp,
-  ListMusic,
+  Share2,
+  Play,
+  ChevronRight,
 } from 'lucide-react';
 import { useSongs } from '@/hooks/useSongs';
 import { useSetlists } from '@/hooks/useSetlists';
 import Button from '@/components/Button';
-import SongModal from '@/components/SongModal';
 import type { SongWithSheets, Setlist } from '@/types/database';
 import toast from 'react-hot-toast';
 
@@ -36,15 +31,15 @@ export const Route = createFileRoute('/worship/songs/$id/view')({
 function SongViewPage() {
   const { id } = useParams({ strict: false });
   const navigate = useNavigate();
-  const { fetchSongById, updateSong, addSheet, removeSheet } = useSongs();
+  const { fetchSongById } = useSongs();
   const { fetchSetlistsBySongId } = useSetlists();
 
   const [song, setSong] = useState<SongWithSheets | null>(null);
   const [loading, setLoading] = useState(true);
   const [lyricsCopied, setLyricsCopied] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
   const [expandedSheets, setExpandedSheets] = useState<Set<string>>(new Set());
   const [relatedSetlists, setRelatedSetlists] = useState<Setlist[]>([]);
+  const [activeTab, setActiveTab] = useState<'sheet' | 'lyrics'>('sheet');
 
   useEffect(() => {
     if (!id) return;
@@ -79,6 +74,15 @@ function SongViewPage() {
     }
   };
 
+  const shareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('링크가 복사되었습니다!');
+    } catch {
+      toast.error('링크 복사 실패');
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return dayjs(dateStr).format('YYYY년 M월 D일');
   };
@@ -106,20 +110,6 @@ function SongViewPage() {
     }
   };
 
-  const handleSaveEdit = async (data: {
-    title?: string;
-    artist?: string;
-    youtube_url?: string;
-    lyrics?: string;
-    memo?: string;
-  }) => {
-    if (!song) return { id: '' };
-    await updateSong(song.id, data);
-    const updated = await fetchSongById(song.id);
-    if (updated) setSong(updated);
-    return { id: song.id };
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -130,234 +120,290 @@ function SongViewPage() {
 
   if (!song) return null;
 
+  // 첫 번째 악보의 키를 Original Key로 표시
+  const originalKey = song.song_sheets.length > 0 ? song.song_sheets[0].music_key : null;
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="sticky top-0 bg-white border-b border-gray-200 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={() => navigate({ to: '/worship/songs' })}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="hidden sm:inline">목록으로</span>
-          </button>
-          <div className="flex items-center gap-2">
-            {song.youtube_url && (
-              <a
-                href={song.youtube_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 text-gray-600 hover:text-red-500 transition-colors"
-                title="유튜브 영상 보기"
-              >
-                <PlayCircle className="w-5 h-5" />
-              </a>
-            )}
-            <Button onClick={() => setEditModalOpen(true)} variant="secondary" icon={<Edit2 className="w-4 h-4" />}>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="max-w-7xl mx-auto pt-12 px-8">
+        <div className="flex items-start justify-between">
+          {/* Title & Meta */}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-[28px] font-bold text-gray-900">{song.title}</h1>
+              {originalKey && (
+                <div className="bg-primary-50 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-semibold text-primary-600">Original: {originalKey}</span>
+                </div>
+              )}
+            </div>
+            {song.artist && <p className="text-sm text-gray-500">{song.artist}</p>}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={shareLink}
+              className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors bg-white"
+            >
+              <Share2 className="w-4 h-4" />
+              공유하기
+            </button>
+            <Button
+              onClick={() => navigate({ to: '/worship/songs/$id/edit', params: { id: song.id } })}
+              icon={<Edit2 className="w-4 h-4" />}
+            >
               수정
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto p-4 lg:p-6">
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="p-6 lg:p-8 border-b border-gray-200">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Music2 className="w-8 h-8 text-primary-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">{song.title}</h1>
-                {song.artist && (
-                  <p className="text-lg text-gray-600 flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    {song.artist}
-                  </p>
-                )}
-                <p className="text-sm text-gray-400 mt-2 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {formatDate(song.created_at)}
-                </p>
-              </div>
-            </div>
-
-            {song.memo && (
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800 flex items-start gap-2">
-                  <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  {song.memo}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="p-6 lg:p-8 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              악보 ({song.song_sheets.length})
-            </h2>
-
-            {song.song_sheets.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg">
-                <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">등록된 악보가 없습니다</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {song.song_sheets.map((sheet) => {
-                  const isPdf = sheet.file_url?.toLowerCase().endsWith('.pdf');
-                  const isImage = !isPdf;
-                  const isExpanded = expandedSheets.has(sheet.id);
-
-                  const toggleSheet = () => {
-                    setExpandedSheets((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(sheet.id)) {
-                        next.delete(sheet.id);
-                      } else {
-                        next.add(sheet.id);
-                      }
-                      return next;
-                    });
-                  };
-
-                  return (
-                    <div key={sheet.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                      <button
-                        onClick={toggleSheet}
-                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          {isExpanded ? (
-                            <ChevronUp className="w-5 h-5 text-gray-500" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-gray-500" />
-                          )}
-                          <span className="font-bold text-primary-700 text-lg">{sheet.music_key}</span>
-                        </div>
-                        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => downloadSheet(sheet.file_url, sheet.music_key)}
-                            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-primary-600"
-                          >
-                            <Download className="w-4 h-4" />
-                            다운로드
-                          </button>
-                          <a
-                            href={sheet.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                            새 탭에서 열기
-                          </a>
-                        </div>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="bg-white border-t border-gray-200">
-                          {isPdf ? (
-                            <iframe src={sheet.file_url} className="w-full h-[500px]" title={`${song.title} - ${sheet.music_key}`} />
-                          ) : isImage ? (
-                            <img src={sheet.file_url} alt={`${song.title} - ${sheet.music_key}`} className="w-full" />
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="p-6 lg:p-8 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">가사</h2>
-              {song.lyrics && (
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-8 py-8">
+        <div className="flex gap-6">
+          {/* Left Column - Main Content */}
+          <div className="flex-1 min-w-0">
+            {/* Tab Navigation */}
+            <div className="border-b border-gray-200 mb-6">
+              <div className="flex gap-6">
                 <button
-                  onClick={copyLyrics}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                    lyricsCopied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  onClick={() => setActiveTab('sheet')}
+                  className={`pb-3 px-2 text-base font-bold border-b-2 transition-colors ${
+                    activeTab === 'sheet'
+                      ? 'border-primary-600 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  {lyricsCopied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      복사됨
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      가사 복사
-                    </>
-                  )}
+                  악보
                 </button>
-              )}
+                <button
+                  onClick={() => setActiveTab('lyrics')}
+                  className={`pb-3 px-2 text-base font-medium border-b-2 transition-colors ${
+                    activeTab === 'lyrics'
+                      ? 'border-primary-600 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  가사
+                </button>
+              </div>
             </div>
 
-            {song.lyrics ? (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <pre className="whitespace-pre-wrap font-sans text-gray-800 text-sm leading-relaxed">{song.lyrics}</pre>
-              </div>
-            ) : (
-              <div className="text-center py-8 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-400">등록된 가사가 없습니다</p>
+            {/* Sheet Tab */}
+            {activeTab === 'sheet' && (
+              <>
+                <h2 className="text-base font-bold text-gray-900 mb-3">악보 목록</h2>
+                <div className="space-y-3">
+                  {song.song_sheets.map((sheet) => {
+                    const isPdf = sheet.file_url?.toLowerCase().endsWith('.pdf');
+                    const isImage = !isPdf;
+                    const isExpanded = expandedSheets.has(sheet.id);
+
+                    const toggleSheet = () => {
+                      setExpandedSheets((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(sheet.id)) {
+                          next.delete(sheet.id);
+                        } else {
+                          next.add(sheet.id);
+                        }
+                        return next;
+                      });
+                    };
+
+                    return (
+                      <div key={sheet.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                        <div className="p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-primary-50 p-3 rounded-lg">
+                              <Music2 className="w-6 h-6 text-primary-600" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-900">{sheet.music_key} 악보</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => downloadSheet(sheet.file_url, sheet.music_key)}
+                              icon={<Download className="w-3.5 h-3.5" />}
+                            >
+                              다운로드
+                            </Button>
+                            <button
+                              onClick={toggleSheet}
+                              className="w-6 h-6 flex items-center justify-center"
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="w-4.5 h-4.5 text-gray-500" />
+                              ) : (
+                                <ChevronDown className="w-4.5 h-4.5 text-gray-500" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="border-t border-gray-200 bg-gray-50 p-3">
+                            {isPdf ? (
+                              <iframe src={sheet.file_url} className="w-full h-[500px]" title={`${song.title} - ${sheet.music_key}`} />
+                            ) : isImage ? (
+                              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                <img
+                                  src={sheet.file_url}
+                                  alt={`${song.title} - ${sheet.music_key}`}
+                                  className="w-full h-auto"
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Lyrics Preview */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 mt-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-base font-bold text-gray-900">가사</h3>
+                    {song.lyrics && (
+                      <button
+                        onClick={copyLyrics}
+                        className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        가사 복사
+                      </button>
+                    )}
+                  </div>
+                  {song.lyrics ? (
+                    <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-snug">{song.lyrics}</pre>
+                  ) : (
+                    <p className="text-sm text-gray-400">등록된 가사가 없습니다</p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Lyrics Tab */}
+            {activeTab === 'lyrics' && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-bold text-gray-900">가사</h3>
+                  {song.lyrics && (
+                    <button
+                      onClick={copyLyrics}
+                      className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      가사 복사
+                    </button>
+                  )}
+                </div>
+                {song.lyrics ? (
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-snug">{song.lyrics}</pre>
+                ) : (
+                  <p className="text-sm text-gray-400">등록된 가사가 없습니다</p>
+                )}
               </div>
             )}
           </div>
 
-          {/* 이 곡이 사용된 콘티 */}
-          <div className="p-6 lg:p-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <ListMusic className="w-5 h-5" />
-              사용된 콘티 ({relatedSetlists.length})
-            </h2>
-
-            {relatedSetlists.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg">
-                <ListMusic className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">이 곡이 사용된 콘티가 없습니다</p>
+          {/* Right Column - Sidebar */}
+          <div className="w-[360px] flex-shrink-0 space-y-6">
+            {/* Song Details */}
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="text-base font-bold text-gray-900 mb-4">곡 상세 정보</h3>
+              <div className="space-y-3 text-xs">
+                <div className="flex items-start justify-between">
+                  <span className="text-gray-500">등록일</span>
+                  <span className="font-semibold text-gray-700">{dayjs(song.created_at).format('YYYY.MM.DD HH:mm:ss')}</span>
+                </div>
+                <div className="flex items-start justify-between">
+                  <span className="text-gray-500">최근 수정일</span>
+                  <span className="font-semibold text-gray-700">{dayjs(song.updated_at).format('YYYY.MM.DD HH:mm:ss')}</span>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {relatedSetlists.map((setlist) => (
-                  <Link
-                    key={setlist.id}
-                    to="/worship/setlists/$id/view"
-                    params={{ id: setlist.id }}
-                    className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+            </div>
+
+            {/* YouTube */}
+            {song.youtube_url && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5">
+                <h3 className="text-base font-bold text-gray-900 mb-3">유튜브</h3>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={song.youtube_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
                   >
-                    <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Calendar className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900">
-                        {dayjs(setlist.date).format('YYYY년 M월 D일')}
-                      </p>
-                      <p className="text-sm text-gray-500">{setlist.service_type}</p>
-                    </div>
-                  </Link>
-                ))}
+                    <Play className="w-4 h-4" />
+                    유튜브에서 듣기
+                  </a>
+                  <button
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(song.youtube_url || '');
+                      toast.success('링크가 복사되었습니다!');
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 bg-white text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <Copy className="w-4 h-4" />
+                    링크 복사
+                  </button>
+                </div>
               </div>
             )}
+
+            {/* Memo */}
+            {song.memo && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5">
+                <h3 className="text-base font-bold text-gray-900 mb-3">메모</h3>
+                <div className="bg-yellow-100 border border-yellow-300 rounded-xl p-4">
+                  <p className="text-xs text-gray-700 leading-relaxed">{song.memo}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Recent Setlists */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-gray-900">최근 사용된 콘티</h3>
+                {relatedSetlists.length > 0 && (
+                  <div className="bg-primary-50 px-2 py-0.5 rounded-xl">
+                    <span className="text-xs font-semibold text-primary-600">총 {relatedSetlists.length}회</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2.5">
+                {relatedSetlists.length === 0 ? (
+                  <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
+                    <p className="text-sm text-gray-400">사용된 콘티가 없습니다</p>
+                  </div>
+                ) : (
+                  relatedSetlists.slice(0, 5).map((setlist) => (
+                    <Link
+                      key={setlist.id}
+                      to="/worship/setlists/$id/view"
+                      params={{ id: setlist.id }}
+                      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-900 mb-0.5">{setlist.title || setlist.service_type}</p>
+                        <p className="text-xs text-gray-500">{dayjs(setlist.date).format('YYYY.MM.DD')} 예배</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </Link>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
-      <SongModal
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        song={song}
-        onSave={handleSaveEdit}
-        onAddSheet={addSheet}
-        onRemoveSheet={async (sheetId, fileUrl) => {
-          await removeSheet(sheetId, fileUrl);
-          const updated = await fetchSongById(song.id);
-          if (updated) setSong(updated);
-        }}
-      />
     </div>
   );
 }
