@@ -20,7 +20,6 @@ import {
 import { useSetlists } from '@/hooks/useSetlists';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
-import Button from '@/components/Button';
 import DrawingCanvas from '@/components/DrawingCanvas';
 import LyricsModal from '@/components/LyricsModal';
 import type { SetlistWithItems, SetlistItemWithSong } from '@/types/database';
