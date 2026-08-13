@@ -123,31 +123,31 @@ function NewSongPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white">
-        <div className="max-w-7xl mx-auto px-8 py-5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
           {/* Breadcrumbs */}
-          <div className="flex items-center gap-2 text-xs mb-4">
-            <span className="text-gray-500 font-medium">찬양팀</span>
+          <div className="flex items-center gap-2 text-[11px] sm:text-xs mb-3 sm:mb-4 overflow-x-auto">
+            <span className="text-gray-500 font-medium whitespace-nowrap">찬양팀</span>
             <span className="text-gray-400">&gt;</span>
-            <span className="text-gray-500 font-medium">악보 라이브러리</span>
+            <span className="text-gray-500 font-medium whitespace-nowrap">악보 라이브러리</span>
             <span className="text-gray-400">&gt;</span>
-            <span className="text-primary-600 font-semibold">새 곡 추가</span>
+            <span className="text-primary-600 font-semibold whitespace-nowrap">새 곡 추가</span>
           </div>
 
           {/* Title & Actions */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={handleCancel}
-                className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors bg-white"
+                className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors bg-white"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-700" />
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
               </button>
-              <h1 className="text-[28px] font-bold text-gray-900">새 곡 추가</h1>
+              <h1 className="text-[20px] sm:text-[24px] lg:text-[28px] font-bold text-gray-900">새 곡 추가</h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={handleCancel}
-                className="px-4.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors bg-white"
+                className="px-4 sm:px-5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors bg-white"
               >
                 취소
               </button>
@@ -160,83 +160,93 @@ function NewSongPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        <div className="flex gap-6">
-          {/* Left Column */}
-          <div className="flex-1 min-w-0 space-y-6">
-            {/* Basic Info Card */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <h2 className="text-base font-bold text-gray-900 mb-5">기본 정보</h2>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
+          {/* Basic Info Card */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+            <h2 className="text-sm sm:text-base font-bold text-gray-900 mb-4 sm:mb-5">기본 정보</h2>
 
-              <div className="space-y-5">
-                {/* Song Title */}
-                <div>
-                  <label className="flex items-center gap-1 text-xs font-semibold text-gray-700 mb-1.5">
-                    곡 제목
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="곡 제목을 입력하세요"
-                  />
-                </div>
+            <div className="space-y-4 sm:space-y-5">
+              {/* Song Title */}
+              <div>
+                <label className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-gray-700 mb-1.5">
+                  곡 제목
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full h-10 sm:h-11 px-3 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="곡 제목을 입력하세요"
+                />
+              </div>
 
-                {/* Artist */}
-                <div>
-                  <label className="flex items-center gap-1 text-xs font-semibold text-gray-700 mb-1.5">
-                    아티스트 / 작곡가
-                  </label>
-                  <input
-                    type="text"
-                    value={artist}
-                    onChange={(e) => setArtist(e.target.value)}
-                    className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="아티스트 또는 작곡가"
-                  />
-                </div>
+              {/* Artist */}
+              <div>
+                <label className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-gray-700 mb-1.5">
+                  아티스트 / 작곡가
+                </label>
+                <input
+                  type="text"
+                  value={artist}
+                  onChange={(e) => setArtist(e.target.value)}
+                  className="w-full h-10 sm:h-11 px-3 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="아티스트 또는 작곡가"
+                />
+              </div>
 
-                {/* Original Key */}
-                <div>
-                  <label className="flex items-center gap-1 text-xs font-semibold text-gray-700 mb-1.5">
-                    원키 (Original Key)
-                  </label>
-                  <div className="w-full h-10 px-3 flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50">
-                    <span className="text-sm text-gray-900">{originalKey || 'N/A'}</span>
-                    <span className="text-xs text-gray-500">(첫 번째 악보 키)</span>
-                  </div>
-                </div>
-
-                {/* YouTube URL */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                    유튜브 링크
-                  </label>
-                  <input
-                    type="url"
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="https://youtube.com/watch?v=xxx"
-                  />
+              {/* Original Key */}
+              <div>
+                <label className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-gray-700 mb-1.5">
+                  원키 (Original Key)
+                </label>
+                <div className="w-full h-10 sm:h-11 px-3 flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50">
+                  <span className="text-sm text-gray-900">{originalKey || 'N/A'}</span>
+                  <span className="text-[11px] sm:text-xs text-gray-500">(첫 번째 악보 키)</span>
                 </div>
               </div>
-            </div>
 
-            {/* Sheet Management Card */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-base font-bold text-gray-900">
+              {/* YouTube URL */}
+              <div>
+                <label className="text-[11px] sm:text-xs font-semibold text-gray-700 mb-1.5 block">
+                  유튜브 링크
+                </label>
+                <input
+                  type="url"
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  className="w-full h-10 sm:h-11 px-3 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="https://youtube.com/watch?v=xxx"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Memo Card */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+            <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-3">메모</h3>
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              className="w-full min-h-[100px] sm:min-h-[120px] p-3 sm:p-4 bg-yellow-100 border border-yellow-300 rounded-xl text-[11px] sm:text-xs text-gray-700 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="메모를 입력하세요 (예: 후렴 부분에서 키 전환 시 부드럽게 연결할 것)"
+            />
+          </div>
+
+          {/* Sheet Management Card */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-5">
+                <h2 className="text-sm sm:text-base font-bold text-gray-900">
                   등록된 악보 파일 ({sheetFiles.length})
                 </h2>
                 <button
                   onClick={() => setShowAddSheet(!showAddSheet)}
-                  className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
+                  className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-primary-600 hover:text-primary-700"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  새 악보 추가
+                  <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden sm:inline">새 악보 추가</span>
+                  <span className="sm:hidden">추가</span>
                 </button>
               </div>
 
@@ -246,22 +256,22 @@ function NewSongPage() {
                   {sheetFiles.map((sheet) => (
                     <div
                       key={sheet.id}
-                      className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 flex items-center gap-3"
+                      className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 sm:px-3 py-2 flex items-center gap-2 sm:gap-3"
                     >
-                      <FileText className="w-4.5 h-4.5 text-gray-600 flex-shrink-0" />
-                      <p className="flex-1 text-xs font-semibold text-gray-900 truncate">
+                      <FileText className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-gray-600 flex-shrink-0" />
+                      <p className="flex-1 text-[11px] sm:text-xs font-semibold text-gray-900 truncate">
                         {sheet.file.name}
                       </p>
-                      <div className="bg-primary-50 px-1.5 py-0.5 rounded">
-                        <span className="text-[11px] font-semibold text-primary-600">
+                      <div className="bg-primary-50 px-1.5 py-0.5 rounded flex-shrink-0">
+                        <span className="text-[10px] sm:text-[11px] font-semibold text-primary-600">
                           {sheet.key}
                         </span>
                       </div>
                       <button
                         onClick={() => handleDeleteSheet(sheet.id)}
-                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
                       >
-                        <X className="w-4 h-4 text-gray-500" />
+                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500" />
                       </button>
                     </div>
                   ))}
@@ -270,13 +280,13 @@ function NewSongPage() {
 
               {/* Add Sheet Form */}
               {showAddSheet && (
-                <div className="bg-gray-50 border border-gray-200 border-dashed rounded-lg p-4 space-y-4">
-                  <div className="flex items-center gap-3">
+                <div className="bg-gray-50 border border-gray-200 border-dashed rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <div className="relative">
                       <select
                         value={newSheetKey}
                         onChange={(e) => setNewSheetKey(e.target.value)}
-                        className="w-24 h-10 px-3 pr-8 border border-gray-200 rounded-lg text-xs font-semibold text-gray-900 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-20 sm:w-24 h-10 px-2 sm:px-3 pr-7 sm:pr-8 border border-gray-200 rounded-lg text-[11px] sm:text-xs font-semibold text-gray-900 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
                         {MUSIC_KEYS.map((key) => (
                           <option key={key} value={key}>
@@ -284,24 +294,25 @@ function NewSongPage() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                      <ChevronDown className="absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 pointer-events-none" />
                     </div>
                     <input
                       type="text"
                       value={newSheetDescription}
                       onChange={(e) => setNewSheetDescription(e.target.value)}
-                      className="flex-1 h-10 px-3 border border-gray-200 rounded-lg text-xs font-medium text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="파일명 (예: 어노인팅 편곡, 단선 멜로디 등)"
+                      className="flex-1 h-10 px-2.5 sm:px-3 border border-gray-200 rounded-lg text-[11px] sm:text-xs font-medium text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="파일명 (예: 어노인팅 편곡)"
                     />
                   </div>
 
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-white border-2 border-gray-300 border-dashed rounded-lg h-20 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="bg-white border-2 border-gray-300 border-dashed rounded-lg h-20 sm:h-24 flex flex-col items-center justify-center gap-1 sm:gap-1.5 cursor-pointer hover:bg-gray-50 transition-colors"
                   >
-                    <Upload className="w-4.5 h-4.5 text-gray-600" />
-                    <p className="text-xs font-semibold text-gray-700 text-center">
-                      파일을 드래그하거나 클릭하여 업로드 (PDF, 이미지 지원)
+                    <Upload className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-gray-600" />
+                    <p className="text-[11px] sm:text-xs font-semibold text-gray-700 text-center px-4">
+                      파일을 클릭하여 업로드<br className="sm:hidden" />
+                      <span className="hidden sm:inline"> (PDF, 이미지 지원)</span>
                     </p>
                     <input
                       ref={fileInputRef}
@@ -312,10 +323,10 @@ function NewSongPage() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-end gap-3">
+                  <div className="flex items-center justify-end gap-2 sm:gap-3">
                     <button
                       onClick={() => setShowAddSheet(false)}
-                      className="text-xs font-semibold text-gray-700 hover:text-gray-900"
+                      className="text-[11px] sm:text-xs font-semibold text-gray-700 hover:text-gray-900 px-2"
                     >
                       취소
                     </button>
@@ -330,30 +341,15 @@ function NewSongPage() {
               )}
             </div>
 
-            {/* Lyrics Card */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <h2 className="text-base font-bold text-gray-900 mb-4">가사</h2>
-              <textarea
-                value={lyrics}
-                onChange={(e) => setLyrics(e.target.value)}
-                className="w-full min-h-[200px] p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 leading-snug resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="가사를 입력하세요"
-              />
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="w-[360px] flex-shrink-0">
-            {/* Memo Card */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="text-base font-bold text-gray-900 mb-3">메모</h3>
-              <textarea
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                className="w-full min-h-[120px] p-4 bg-yellow-100 border border-yellow-300 rounded-xl text-xs text-gray-700 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="메모를 입력하세요 (예: 후렴 부분에서 키 전환 시 부드럽게 연결할 것)"
-              />
-            </div>
+          {/* Lyrics Card */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+            <h2 className="text-sm sm:text-base font-bold text-gray-900 mb-3 sm:mb-4">가사</h2>
+            <textarea
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              className="w-full min-h-[160px] sm:min-h-[200px] p-3 sm:p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 leading-snug resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="가사를 입력하세요"
+            />
           </div>
         </div>
       </div>

@@ -31,7 +31,6 @@ import {
   X,
   Save,
   PenTool,
-  Calendar,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { useSongs } from '@/hooks/useSongs';
@@ -55,6 +54,7 @@ function SortableItem({
   onNoteChange,
   onCommentChange,
   onRemove,
+  onViewSheet,
   isOwner,
 }: {
   item: SetlistItemWithSong;
@@ -62,6 +62,7 @@ function SortableItem({
   onNoteChange: (note: string) => void;
   onCommentChange: (comment: string) => void;
   onRemove: () => void;
+  onViewSheet: (fileUrl: string, title: string, musicKey: string) => void;
   isOwner: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -78,30 +79,30 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white rounded-xl border border-gray-200 p-4 ${isDragging ? 'shadow-lg opacity-90' : ''}`}
+      className={`bg-white rounded-xl border border-gray-200 p-3 sm:p-4 ${isDragging ? 'shadow-lg opacity-90' : 'shadow-sm'}`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2 sm:gap-3">
         <button
           {...attributes}
           {...listeners}
-          className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing touch-none"
+          className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
         >
-          <GripVertical className="w-5 h-5" />
+          <GripVertical className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
-        <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-          <span className="text-sm font-semibold text-primary-700">{item.position}</span>
+        <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <span className="text-xs sm:text-sm font-semibold text-primary-700">{item.position}</span>
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-gray-900 truncate">{item.song.title}</h3>
-          <p className="text-sm text-gray-500 truncate">{item.song.artist || '아티스트 미입력'}</p>
+          <h3 className="font-semibold text-sm sm:text-base text-gray-900 truncate">{item.song.title}</h3>
+          <p className="text-xs sm:text-sm text-gray-500 truncate mb-2 sm:mb-2.5">{item.song.artist || '아티스트 미입력'}</p>
 
-          <div className="flex flex-wrap items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-2.5">
             <select
               value={item.selected_key || ''}
               onChange={(e) => onKeyChange(e.target.value)}
-              className="px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="px-2 py-1.5 text-xs sm:text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
             >
               <option value="">키 선택</option>
               {availableKeys.length > 0 ? (
@@ -120,16 +121,15 @@ function SortableItem({
                 {item.song.song_sheets
                   .filter((s) => s.music_key === item.selected_key)
                   .map((sheet) => (
-                    <a
+                    <button
                       key={sheet.id}
-                      href={sheet.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 px-2 py-1 bg-primary-50 text-primary-600 text-sm rounded-lg hover:bg-primary-100 transition-colors"
+                      onClick={() => onViewSheet(sheet.file_url, item.song.title, sheet.music_key)}
+                      className="flex items-center gap-1 px-2 py-1.5 bg-primary-50 text-primary-600 text-xs sm:text-sm font-medium rounded-lg hover:bg-primary-100 transition-colors"
                     >
-                      <FileText className="w-4 h-4" />
-                      악보 보기
-                    </a>
+                      <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">악보 보기</span>
+                      <span className="sm:hidden">악보</span>
+                    </button>
                   ))}
               </>
             )}
@@ -140,7 +140,7 @@ function SortableItem({
             value={item.note || ''}
             onChange={(e) => onNoteChange(e.target.value)}
             placeholder="곡 메모 (예: 인트로 2번 반복)"
-            className="mt-2 w-full px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-2.5 py-2 text-xs sm:text-sm border border-yellow-900 bg-yellow-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 mb-2"
           />
 
           {isOwner && (
@@ -149,13 +149,16 @@ function SortableItem({
               onChange={(e) => onCommentChange(e.target.value)}
               placeholder="멘트 (생성자만 보임)"
               rows={2}
-              className="mt-2 w-full px-2 py-1 text-sm border border-orange-300 bg-orange-50 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+              className="w-full px-2.5 py-2 text-xs sm:text-sm border border-purple-900 bg-purple-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
             />
           )}
         </div>
 
-        <button onClick={onRemove} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-          <Trash2 className="w-5 h-5" />
+        <button
+          onClick={onRemove}
+          className="p-1.5 sm:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+        >
+          <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       </div>
     </div>
@@ -193,6 +196,10 @@ function SetlistEditPage() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
+
+  // 악보 보기 모달
+  const [sheetModalOpen, setSheetModalOpen] = useState(false);
+  const [selectedSheet, setSelectedSheet] = useState<{ fileUrl: string; title: string; musicKey: string } | null>(null);
 
   const hasSetlistInfoChanges = date !== originalDate || serviceType !== originalServiceType;
   const hasItemsChanges = itemsToDelete.length > 0 || JSON.stringify(items) !== JSON.stringify(originalItems);
@@ -378,6 +385,11 @@ function SetlistEditPage() {
     }
   };
 
+  const handleViewSheet = (fileUrl: string, title: string, musicKey: string) => {
+    setSelectedSheet({ fileUrl, title, musicKey });
+    setSheetModalOpen(true);
+  };
+
   const filteredSongs = songs.filter((song) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
@@ -412,83 +424,136 @@ function SetlistEditPage() {
   if (!setlist) return null;
 
   return (
-    <div className="p-4 lg:p-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate({ to: '/worship/setlists' })}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-5 h-5 text-gray-400" />
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="px-2 py-1 text-lg font-bold text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="border-b border-gray-200 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-2 text-[11px] sm:text-xs mb-3 sm:mb-4 overflow-x-auto">
+            <span className="text-gray-500 font-medium whitespace-nowrap">찬양팀</span>
+            <span className="text-gray-400">&gt;</span>
+            <span className="text-gray-500 font-medium whitespace-nowrap">콘티 관리</span>
+            <span className="text-gray-400">&gt;</span>
+            <span className="text-primary-600 font-semibold whitespace-nowrap">콘티 편집</span>
           </div>
-          <input
-            type="text"
-            value={serviceType}
-            onChange={(e) => setServiceType(e.target.value)}
-            placeholder="예배 유형 (예: 주일예배, 수요예배)"
-            className="w-full px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => navigate({ to: '/worship/setlists/$id/view', params: { id: id! } })}
-            icon={<PenTool className="w-4 h-4" />}
-          >
-            <span className="hidden sm:inline">송폼</span>
-          </Button>
-          <Button variant="primary" onClick={handleSave} loading={saving} disabled={!hasChanges} icon={<Save className="w-4 h-4" />}>
-            저장
-          </Button>
+
+          {/* Title & Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => navigate({ to: '/worship/setlists' })}
+                className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors bg-white"
+              >
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+              </button>
+              <h1 className="text-[20px] sm:text-[24px] lg:text-[28px] font-bold text-gray-900">콘티 편집</h1>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => navigate({ to: '/worship/setlists/$id/view', params: { id: id! } })}
+                icon={<PenTool className="w-4 h-4" />}
+              >
+                <span className="hidden sm:inline">송폼</span>
+                <span className="sm:hidden">송폼</span>
+              </Button>
+              <Button onClick={handleSave} loading={saving} disabled={!hasChanges} icon={<Save className="w-4 h-4" />}>
+                저장
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <button
-        onClick={() => {
-          fetchSongs();
-          setAddModalOpen(true);
-        }}
-        className="w-full mb-4 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-primary-400 hover:text-primary-600 transition-colors flex items-center justify-center gap-2"
-      >
-        <Plus className="w-5 h-5" />
-        곡 추가하기
-      </button>
-
-      {items.length === 0 ? (
-        <div className="text-center py-12">
-          <Music2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">아직 곡이 없습니다.</p>
-          <p className="text-sm text-gray-400 mt-1">위 버튼을 눌러 곡을 추가해주세요.</p>
-        </div>
-      ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={items} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3">
-              {items.map((item) => (
-                <SortableItem
-                  key={item.id}
-                  item={item}
-                  onKeyChange={(key) => handleKeyChange(item.id, key)}
-                  onNoteChange={(note) => handleNoteChange(item.id, note)}
-                  onCommentChange={(comment) => handleCommentChange(item.id, comment)}
-                  onRemove={() => handleRemoveItem(item.id)}
-                  isOwner={setlist?.created_by === profile?.id}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="space-y-4 sm:space-y-6">
+          {/* 기본 정보 Card */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+            <h2 className="text-sm sm:text-base font-bold text-gray-900 mb-4 sm:mb-5">기본 정보</h2>
+            <div className="space-y-4 sm:space-y-5">
+              <div>
+                <label className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-gray-700 mb-1.5">
+                  예배 날짜
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full h-10 sm:h-11 px-3 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
-              ))}
+              </div>
+              <div>
+                <label className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-gray-700 mb-1.5">
+                  예배 유형
+                </label>
+                <input
+                  type="text"
+                  value={serviceType}
+                  onChange={(e) => setServiceType(e.target.value)}
+                  placeholder="예: 주일 1부, 수요예배, 청년부"
+                  className="w-full h-10 sm:h-11 px-3 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
             </div>
-          </SortableContext>
-        </DndContext>
-      )}
+          </div>
 
+          {/* 곡 목록 Card */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
+              <h2 className="text-sm sm:text-base font-bold text-gray-900">
+                찬양 목록 ({items.length})
+              </h2>
+              <button
+                onClick={() => {
+                  fetchSongs();
+                  setAddModalOpen(true);
+                }}
+                className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-primary-600 hover:text-primary-700"
+              >
+                <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span className="hidden sm:inline">새 곡 추가</span>
+                <span className="sm:hidden">추가</span>
+              </button>
+            </div>
+
+            {items.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
+                <Music2 className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm sm:text-base text-gray-500">아직 곡이 없습니다.</p>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1">위 버튼을 눌러 곡을 추가해주세요.</p>
+              </div>
+            ) : (
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={items} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2.5 sm:space-y-3">
+                    {items.map((item) => (
+                      <SortableItem
+                        key={item.id}
+                        item={item}
+                        onKeyChange={(key) => handleKeyChange(item.id, key)}
+                        onNoteChange={(note) => handleNoteChange(item.id, note)}
+                        onCommentChange={(comment) => handleCommentChange(item.id, comment)}
+                        onRemove={() => handleRemoveItem(item.id)}
+                        onViewSheet={handleViewSheet}
+                        isOwner={setlist?.created_by === profile?.id}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+          </div>
+
+          {/* 마지막 수정 시간 */}
+          <div className="text-center text-xs sm:text-sm text-gray-400">
+            마지막 수정: {formatUpdatedAt(setlist.updated_at)}
+          </div>
+        </div>
+      </div>
+
+      {/* Add Song Modal */}
       <Modal isOpen={addModalOpen} onClose={() => { setAddModalOpen(false); setSearchQuery(''); }} title="곡 추가" size="lg">
         <div className="space-y-4">
           <div className="relative">
@@ -556,10 +621,36 @@ function SetlistEditPage() {
         </div>
       </Modal>
 
-      {/* 마지막 수정 시간 */}
-      <div className="mt-6 pt-4 border-t border-gray-200 text-center text-sm text-gray-400">
-        마지막 수정: {formatUpdatedAt(setlist.updated_at)}
-      </div>
+      {/* Sheet View Modal */}
+      {selectedSheet && (
+        <Modal
+          isOpen={sheetModalOpen}
+          onClose={() => {
+            setSheetModalOpen(false);
+            setSelectedSheet(null);
+          }}
+          title={`${selectedSheet.title} - ${selectedSheet.musicKey}`}
+          size="xl"
+        >
+          <div className="w-full">
+            {selectedSheet.fileUrl.toLowerCase().endsWith('.pdf') ? (
+              <iframe
+                src={selectedSheet.fileUrl}
+                className="w-full h-[70vh] rounded-lg"
+                title={`${selectedSheet.title} - ${selectedSheet.musicKey}`}
+              />
+            ) : (
+              <div className="w-full overflow-auto">
+                <img
+                  src={selectedSheet.fileUrl}
+                  alt={`${selectedSheet.title} - ${selectedSheet.musicKey}`}
+                  className="w-full h-auto rounded-lg"
+                />
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

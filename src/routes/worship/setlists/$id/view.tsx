@@ -799,34 +799,34 @@ function SetlistViewPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
       <div className="border-b border-gray-200 bg-white">
-        <div className="max-w-7xl mx-auto px-8 pb-5 pt-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-5 pt-4 sm:pt-6">
           {/* Breadcrumbs */}
-          <div className="flex items-center gap-2 text-[13px] mb-4">
+          <div className="flex items-center gap-2 text-[11px] sm:text-[13px] mb-3 sm:mb-4">
             <span className="text-gray-500 font-medium">찬양팀</span>
             <span className="text-gray-400">&gt;</span>
             <span className="text-gray-500 font-medium">콘티목록</span>
             <span className="text-gray-400">&gt;</span>
-            <span className="text-primary-600 font-semibold">{formatDate(setlist.date)}</span>
+            <span className="text-primary-600 font-semibold truncate">{formatDate(setlist.date)}</span>
           </div>
 
           {/* Title & Actions */}
-          <div className="flex items-start justify-between gap-3 mb-5">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4 sm:mb-5">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 onClick={() => navigate({ to: '/worship/setlists' })}
-                className="w-10 h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors bg-white"
+                className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors bg-white"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-700" />
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
               </button>
-              <div className="min-w-0">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-[24px] font-bold text-gray-900">{formatDate(setlist.date)}</h1>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <h1 className="text-[18px] sm:text-[20px] lg:text-[24px] font-bold text-gray-900 truncate">{formatDate(setlist.date)}</h1>
                   <div
-                    className="px-2.5 py-1 rounded-md flex-shrink-0"
+                    className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md flex-shrink-0"
                     style={{ backgroundColor: getServiceTypeColors(setlist.service_type).bg }}
                   >
                     <span
-                      className="text-[13px] font-semibold"
+                      className="text-[11px] sm:text-[13px] font-semibold whitespace-nowrap"
                       style={{ color: getServiceTypeColors(setlist.service_type).text }}
                     >
                       {setlist.service_type}
@@ -835,28 +835,31 @@ function SetlistViewPage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 justify-end max-w-md">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-end">
               <button
                 onClick={openWorshipMode}
-                className="flex items-center gap-2 px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+                title="찬양 모드"
               >
                 <Play className="w-4 h-4" />
-                찬양
+                <span className="hidden sm:inline">찬양</span>
               </button>
               <button
                 onClick={copySongList}
-                className="flex items-center gap-2 px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+                title="곡 리스트 복사"
               >
                 <Copy className="w-4 h-4" />
-                곡 리스트 복사
+                <span className="hidden md:inline">곡 리스트 복사</span>
               </button>
               {can.editSetlist && (
                 <button
                   onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
-                  className="flex items-center gap-2 px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+                  title="편집"
                 >
                   <Edit2 className="w-4 h-4" />
-                  편집
+                  <span className="hidden sm:inline">편집</span>
                 </button>
               )}
 
@@ -865,14 +868,15 @@ function SetlistViewPage() {
                 <button
                   onClick={() => setDownloadDropdownOpen(!downloadDropdownOpen)}
                   disabled={exporting || exportingSheets}
-                  className="flex items-center gap-2 px-3.5 py-2.5 border border-primary-600 rounded-lg text-sm font-semibold text-primary-600 hover:bg-primary-50 transition-colors bg-white disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 border border-primary-600 rounded-lg text-sm font-semibold text-primary-600 hover:bg-primary-50 transition-colors bg-white disabled:opacity-50"
+                  title="다운로드"
                 >
                   {(exporting || exportingSheets) ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Download className="w-4 h-4" />
                   )}
-                  
+                  <span className="hidden sm:inline">다운로드</span>
                   <ChevronDown className={`w-4 h-4 transition-transform ${downloadDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -916,23 +920,23 @@ function SetlistViewPage() {
           </div>
 
           {/* Metadata */}
-          <div className="flex items-center gap-5 pb-2">
+          <div className="flex items-center gap-3 sm:gap-5 pb-2 text-[11px] sm:text-[13px]">
             {setlist.creator?.name && (
-              <div className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-[13px] text-gray-600">{setlist.creator.name}</span>
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400" />
+                <span className="text-gray-600">{setlist.creator.name}</span>
               </div>
             )}
-            <div className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-[13px] text-gray-600">{dayjs(setlist.created_at).format('YYYY. M. D.')}</span>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400" />
+              <span className="text-gray-600">{dayjs(setlist.created_at).format('YYYY. M. D.')}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2.5">
             <Music2 className="w-5 h-5 text-gray-900" />
@@ -981,7 +985,7 @@ function SetlistViewPage() {
                       {(item.selected_key || displaySheet?.music_key) && (
                         <div className="bg-gray-100 px-2.5 py-1 rounded-md">
                           <span className="text-[13px] font-semibold text-gray-600">
-                            {item.selected_key || displaySheet?.music_key} Key
+                            {item.selected_key || displaySheet?.music_key}
                           </span>
                         </div>
                       )}
@@ -1091,57 +1095,57 @@ function SetlistViewPage() {
       {worshipMode && setlist && setlist.setlist_items.length > 0 && (
         <div className="fixed inset-0 bg-[#0b0914] z-[100] flex flex-col">
           {/* 상단 바 */}
-          <div className="h-[72px] bg-[#101222] border-b border-[#202442] flex items-center justify-between px-8 py-4.5">
-            <div className="flex items-center gap-4">
-              <div className="px-3 py-1 bg-primary-600 rounded-lg">
-                <span className="text-sm font-bold text-white">
+          <div className="h-[60px] sm:h-[72px] bg-[#101222] border-b border-[#202442] flex items-center justify-between px-3 sm:px-6 lg:px-8 py-3 sm:py-4.5">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-1">
+              <div className="px-2 sm:px-3 py-1 bg-primary-600 rounded-lg flex-shrink-0">
+                <span className="text-xs sm:text-sm font-bold text-white">
                   {currentIndex + 1} / {setlist.setlist_items.length}
                 </span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <h2 className="text-[22px] font-bold text-white">
+              <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
+                <h2 className="text-base sm:text-lg lg:text-[22px] font-bold text-white truncate">
                   {setlist.setlist_items[currentIndex]?.song.title}
                 </h2>
                 {setlist.setlist_items[currentIndex]?.song.artist && (
-                  <span className="text-sm text-gray-400">
+                  <span className="text-xs sm:text-sm text-gray-400 hidden md:inline truncate">
                     {setlist.setlist_items[currentIndex]?.song.artist}
                   </span>
                 )}
               </div>
               {setlist.setlist_items[currentIndex]?.selected_key && (
-                <div className="px-3 pb-1 bg-[#181b34] border border-primary-600 rounded-lg">
-                  <span className="text-xs font-semibold text-primary-400">
+                <div className="px-2 sm:px-3 pb-0.5 sm:pb-1 bg-[#181b34] border border-primary-600 rounded-lg flex-shrink-0">
+                  <span className="text-[10px] sm:text-xs font-semibold text-primary-400">
                     {setlist.setlist_items[currentIndex]?.selected_key}
                   </span>
                 </div>
               )}
               {setlist.setlist_items[currentIndex]?.note && (
-                <span className="text-base text-gray-100">
+                <span className="text-sm sm:text-base text-gray-100 hidden lg:inline truncate">
                   {setlist.setlist_items[currentIndex]?.note}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-shrink-0">
               {setlist.created_by === profile?.id && setlist.setlist_items[currentIndex]?.comment && (
                 <button
                   onClick={() => setShowComments(!showComments)}
-                  className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors ${
+                  className={`px-2 sm:px-2.5 py-1 rounded-md flex items-center gap-1 sm:gap-1.5 transition-colors ${
                     showComments
                       ? 'bg-purple-200 text-purple-900'
                       : 'bg-purple-200/50 text-purple-700 hover:bg-purple-200'
                   }`}
                 >
                   {showComments && (
-                    <div className="w-2 h-2 bg-purple-900 rounded-full" />
+                    <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 bg-purple-900 rounded-full" />
                   )}
-                  <span className="text-[13px] font-bold">멘트</span>
+                  <span className="text-[11px] sm:text-[13px] font-bold">멘트</span>
                 </button>
               )}
               <button
                 onClick={closeWorshipMode}
                 className="text-white/70 hover:text-white transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
           </div>
@@ -1216,12 +1220,12 @@ function SetlistViewPage() {
 
             {/* 멘트 영역 - 악보 위 오버레이 */}
             {setlist.setlist_items[currentIndex]?.comment && setlist.created_by === profile?.id && showComments && (
-              <div className="absolute bottom-0 left-0 right-0 bg-[rgba(19,17,34,0.85)] backdrop-blur-lg border-t border-[#1d1a39] px-8 py-4 z-20">
-                <div className="flex flex-col gap-2">
-                  <div className="px-2.5 py-1 bg-purple-200 rounded-md w-fit">
-                    <span className="text-[13px] font-bold text-purple-900">멘트</span>
+              <div className="absolute bottom-0 left-0 right-0 bg-[rgba(19,17,34,0.85)] backdrop-blur-lg border-t border-[#1d1a39] px-4 sm:px-6 lg:px-8 py-3 sm:py-4 z-20">
+                <div className="flex flex-col gap-1.5 sm:gap-2">
+                  <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-purple-200 rounded-md w-fit">
+                    <span className="text-[11px] sm:text-[13px] font-bold text-purple-900">멘트</span>
                   </div>
-                  <p className="text-base text-gray-100 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm sm:text-base text-gray-100 leading-relaxed whitespace-pre-wrap">
                     {setlist.setlist_items[currentIndex]?.comment}
                   </p>
                 </div>

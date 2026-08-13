@@ -117,15 +117,15 @@ function SongViewPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="max-w-7xl mx-auto pt-12 px-8">
-        <div className="flex items-start justify-between">
+      <div className="max-w-7xl mx-auto pt-6 sm:pt-8 lg:pt-12 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           {/* Title & Meta */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-[28px] font-bold text-gray-900">{song.title}</h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h1 className="text-[22px] sm:text-[24px] lg:text-[28px] font-bold text-gray-900 break-words">{song.title}</h1>
               {originalKey && (
-                <div className="bg-primary-50 px-2 py-0.5 rounded">
-                  <span className="text-[11px] font-semibold text-primary-600">Original: {originalKey}</span>
+                <div className="bg-primary-50 px-2 py-0.5 rounded flex-shrink-0">
+                  <span className="text-[10px] sm:text-[11px] font-semibold text-primary-600">Original: {originalKey}</span>
                 </div>
               )}
             </div>
@@ -133,13 +133,14 @@ function SongViewPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={shareLink}
-              className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors bg-white"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors bg-white"
+              title="공유하기"
             >
               <Share2 className="w-4 h-4" />
-              공유하기
+              <span className="hidden sm:inline">공유하기</span>
             </button>
             <Button
               onClick={() => navigate({ to: '/worship/songs/$id/edit', params: { id: song.id } })}
@@ -152,16 +153,16 @@ function SongViewPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        <div className="flex gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Left Column - Main Content */}
           <div className="flex-1 min-w-0">
             {/* Tab Navigation */}
-            <div className="border-b border-gray-200 mb-6">
-              <div className="flex gap-6">
+            <div className="border-b border-gray-200 mb-4 sm:mb-6">
+              <div className="flex gap-4 sm:gap-6">
                 <button
                   onClick={() => setActiveTab('sheet')}
-                  className={`pb-3 px-2 text-base font-bold border-b-2 transition-colors ${
+                  className={`pb-2.5 sm:pb-3 px-1 sm:px-2 text-sm sm:text-base font-bold border-b-2 transition-colors ${
                     activeTab === 'sheet'
                       ? 'border-primary-600 text-primary-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -171,7 +172,7 @@ function SongViewPage() {
                 </button>
                 <button
                   onClick={() => setActiveTab('lyrics')}
-                  className={`pb-3 px-2 text-base font-medium border-b-2 transition-colors ${
+                  className={`pb-2.5 sm:pb-3 px-1 sm:px-2 text-sm sm:text-base font-medium border-b-2 transition-colors ${
                     activeTab === 'lyrics'
                       ? 'border-primary-600 text-primary-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -185,8 +186,8 @@ function SongViewPage() {
             {/* Sheet Tab */}
             {activeTab === 'sheet' && (
               <>
-                <h2 className="text-base font-bold text-gray-900 mb-3">악보 목록</h2>
-                <div className="space-y-3">
+                <h2 className="text-sm sm:text-base font-bold text-gray-900 mb-3">악보 목록</h2>
+                <div className="space-y-2.5 sm:space-y-3">
                   {song.song_sheets.map((sheet) => {
                     const isPdf = sheet.file_url?.toLowerCase().endsWith('.pdf');
                     const isImage = !isPdf;
@@ -206,26 +207,26 @@ function SongViewPage() {
 
                     return (
                       <div key={sheet.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                        <div className="p-4 flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="bg-primary-50 p-3 rounded-lg">
-                              <Music2 className="w-6 h-6 text-primary-600" />
+                        <div className="p-3 sm:p-4 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 sm:gap-4 flex-1 min-w-0">
+                            <div className="bg-primary-50 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                              <Music2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
                             </div>
-                            <div>
-                              <p className="font-bold text-gray-900">{sheet.music_key} 악보</p>
+                            <div className="min-w-0">
+                              <p className="font-bold text-sm sm:text-base text-gray-900 truncate">{sheet.music_key} 악보</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                             <Button
                               size="sm"
                               onClick={() => downloadSheet(sheet.file_url, sheet.music_key)}
                               icon={<Download className="w-3.5 h-3.5" />}
                             >
-                              다운로드
+                              <span className="hidden sm:inline">다운로드</span>
                             </Button>
                             <button
                               onClick={toggleSheet}
-                              className="w-6 h-6 flex items-center justify-center"
+                              className="w-6 h-6 flex items-center justify-center flex-shrink-0"
                             >
                               {isExpanded ? (
                                 <ChevronUp className="w-4.5 h-4.5 text-gray-500" />
@@ -237,9 +238,9 @@ function SongViewPage() {
                         </div>
 
                         {isExpanded && (
-                          <div className="border-t border-gray-200 bg-gray-50 p-3">
+                          <div className="border-t border-gray-200 bg-gray-50 p-2 sm:p-3">
                             {isPdf ? (
-                              <iframe src={sheet.file_url} className="w-full h-[500px]" title={`${song.title} - ${sheet.music_key}`} />
+                              <iframe src={sheet.file_url} className="w-full h-[400px] sm:h-[500px]" title={`${song.title} - ${sheet.music_key}`} />
                             ) : isImage ? (
                               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                                 <img
@@ -257,16 +258,17 @@ function SongViewPage() {
                 </div>
 
                 {/* Lyrics Preview */}
-                <div className="bg-white border border-gray-200 rounded-xl p-5 mt-6">
+                <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 mt-4 sm:mt-6">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-base font-bold text-gray-900">가사</h3>
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900">가사</h3>
                     {song.lyrics && (
                       <button
                         onClick={copyLyrics}
                         className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
                       >
                         <Copy className="w-3.5 h-3.5" />
-                        가사 복사
+                        <span className="hidden sm:inline">가사 복사</span>
+                        <span className="sm:hidden">복사</span>
                       </button>
                     )}
                   </div>
@@ -281,16 +283,17 @@ function SongViewPage() {
 
             {/* Lyrics Tab */}
             {activeTab === 'lyrics' && (
-              <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-bold text-gray-900">가사</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-gray-900">가사</h3>
                   {song.lyrics && (
                     <button
                       onClick={copyLyrics}
                       className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
                     >
                       <Copy className="w-3.5 h-3.5" />
-                      가사 복사
+                      <span className="hidden sm:inline">가사 복사</span>
+                      <span className="sm:hidden">복사</span>
                     </button>
                   )}
                 </div>
@@ -304,32 +307,32 @@ function SongViewPage() {
           </div>
 
           {/* Right Column - Sidebar */}
-          <div className="w-[360px] flex-shrink-0 space-y-6">
+          <div className="lg:w-[360px] flex-shrink-0 space-y-4 sm:space-y-6">
             {/* Song Details */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="text-base font-bold text-gray-900 mb-4">곡 상세 정보</h3>
-              <div className="space-y-3 text-xs">
-                <div className="flex items-start justify-between">
-                  <span className="text-gray-500">등록일</span>
-                  <span className="font-semibold text-gray-700">{dayjs(song.created_at).format('YYYY.MM.DD HH:mm:ss')}</span>
+            <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+              <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-3 sm:mb-4">곡 상세 정보</h3>
+              <div className="space-y-2.5 sm:space-y-3 text-[11px] sm:text-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-gray-500 flex-shrink-0">등록일</span>
+                  <span className="font-semibold text-gray-700 text-right">{dayjs(song.created_at).format('YYYY.MM.DD HH:mm:ss')}</span>
                 </div>
-                <div className="flex items-start justify-between">
-                  <span className="text-gray-500">최근 수정일</span>
-                  <span className="font-semibold text-gray-700">{dayjs(song.updated_at).format('YYYY.MM.DD HH:mm:ss')}</span>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-gray-500 flex-shrink-0">최근 수정일</span>
+                  <span className="font-semibold text-gray-700 text-right">{dayjs(song.updated_at).format('YYYY.MM.DD HH:mm:ss')}</span>
                 </div>
               </div>
             </div>
 
             {/* YouTube */}
             {song.youtube_url && (
-              <div className="bg-white border border-gray-200 rounded-xl p-5">
-                <h3 className="text-base font-bold text-gray-900 mb-3">유튜브</h3>
-                <div className="flex items-center gap-2">
+              <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-3">유튜브</h3>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <a
                     href={song.youtube_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
                   >
                     <Play className="w-4 h-4" />
                     유튜브에서 듣기
@@ -339,7 +342,7 @@ function SongViewPage() {
                       await navigator.clipboard.writeText(song.youtube_url || '');
                       toast.success('링크가 복사되었습니다!');
                     }}
-                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 bg-white text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 bg-white text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <Copy className="w-4 h-4" />
                     링크 복사
@@ -350,28 +353,28 @@ function SongViewPage() {
 
             {/* Memo */}
             {song.memo && (
-              <div className="bg-white border border-gray-200 rounded-xl p-5">
-                <h3 className="text-base font-bold text-gray-900 mb-3">메모</h3>
-                <div className="bg-yellow-100 border border-yellow-300 rounded-xl p-4">
-                  <p className="text-xs text-gray-700 leading-relaxed">{song.memo}</p>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-3">메모</h3>
+                <div className="bg-yellow-100 border border-yellow-300 rounded-xl p-3 sm:p-4">
+                  <p className="text-[11px] sm:text-xs text-gray-700 leading-relaxed">{song.memo}</p>
                 </div>
               </div>
             )}
 
             {/* Recent Setlists */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-gray-900">최근 사용된 콘티</h3>
+            <div className="space-y-2.5 sm:space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-gray-900">최근 사용된 콘티</h3>
                 {relatedSetlists.length > 0 && (
-                  <div className="bg-primary-50 px-2 py-0.5 rounded-xl">
-                    <span className="text-xs font-semibold text-primary-600">총 {relatedSetlists.length}회</span>
+                  <div className="bg-primary-50 px-2 py-0.5 rounded-xl flex-shrink-0">
+                    <span className="text-[10px] sm:text-xs font-semibold text-primary-600">총 {relatedSetlists.length}회</span>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2 sm:space-y-2.5">
                 {relatedSetlists.length === 0 ? (
-                  <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 text-center">
                     <p className="text-sm text-gray-400">사용된 콘티가 없습니다</p>
                   </div>
                 ) : (
@@ -380,13 +383,13 @@ function SongViewPage() {
                       key={setlist.id}
                       to="/worship/setlists/$id/view"
                       params={{ id: setlist.id }}
-                      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4 flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors"
                     >
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-900 mb-0.5">{setlist.title || setlist.service_type}</p>
-                        <p className="text-xs text-gray-500">{dayjs(setlist.date).format('YYYY.MM.DD')} 예배</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 mb-0.5 truncate">{setlist.title || setlist.service_type}</p>
+                        <p className="text-[11px] sm:text-xs text-gray-500">{dayjs(setlist.date).format('YYYY.MM.DD')} 예배</p>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                      <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     </Link>
                   ))
                 )}
