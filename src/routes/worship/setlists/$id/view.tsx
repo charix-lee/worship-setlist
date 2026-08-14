@@ -1095,59 +1095,70 @@ function SetlistViewPage() {
       {worshipMode && setlist && setlist.setlist_items.length > 0 && (
         <div className="fixed inset-0 bg-[#0b0914] z-[100] flex flex-col">
           {/* 상단 바 */}
-          <div className="h-[60px] sm:h-[72px] bg-[#101222] border-b border-[#202442] flex items-center justify-between px-3 sm:px-6 lg:px-8 py-3 sm:py-4.5">
-            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-1">
-              <div className="px-2 sm:px-3 py-1 bg-primary-600 rounded-lg flex-shrink-0">
-                <span className="text-xs sm:text-sm font-bold text-white">
-                  {currentIndex + 1} / {setlist.setlist_items.length}
-                </span>
-              </div>
-              <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
-                <h2 className="text-base sm:text-lg lg:text-[22px] font-bold text-white truncate">
-                  {setlist.setlist_items[currentIndex]?.song.title}
-                </h2>
-                {setlist.setlist_items[currentIndex]?.song.artist && (
-                  <span className="text-xs sm:text-sm text-gray-400 hidden md:inline truncate">
-                    {setlist.setlist_items[currentIndex]?.song.artist}
-                  </span>
-                )}
-              </div>
-              {setlist.setlist_items[currentIndex]?.selected_key && (
-                <div className="px-2 sm:px-3 pb-0.5 sm:pb-1 bg-[#181b34] border border-primary-600 rounded-lg flex-shrink-0">
-                  <span className="text-[10px] sm:text-xs font-semibold text-primary-400">
-                    {setlist.setlist_items[currentIndex]?.selected_key}
+          <div className="bg-[#101222] border-b border-[#202442]">
+            <div className="flex items-center justify-between px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-1">
+                <div className="px-2 sm:px-3 py-1 bg-primary-600 rounded-lg flex-shrink-0">
+                  <span className="text-xs sm:text-sm font-bold text-white">
+                    {currentIndex + 1} / {setlist.setlist_items.length}
                   </span>
                 </div>
-              )}
-              {setlist.setlist_items[currentIndex]?.note && (
-                <span className="text-sm sm:text-base text-gray-100 hidden lg:inline truncate">
-                  {setlist.setlist_items[currentIndex]?.note}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-shrink-0">
-              {setlist.created_by === profile?.id && setlist.setlist_items[currentIndex]?.comment && (
-                <button
-                  onClick={() => setShowComments(!showComments)}
-                  className={`px-2 sm:px-2.5 py-1 rounded-md flex items-center gap-1 sm:gap-1.5 transition-colors ${
-                    showComments
-                      ? 'bg-purple-200 text-purple-900'
-                      : 'bg-purple-200/50 text-purple-700 hover:bg-purple-200'
-                  }`}
-                >
-                  {showComments && (
-                    <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 bg-purple-900 rounded-full" />
+                <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
+                  <h2 className="text-base sm:text-lg lg:text-[22px] font-bold text-white truncate">
+                    {setlist.setlist_items[currentIndex]?.song.title}
+                  </h2>
+                  {setlist.setlist_items[currentIndex]?.song.artist && (
+                    <span className="text-xs sm:text-sm text-gray-400 hidden md:inline truncate">
+                      {setlist.setlist_items[currentIndex]?.song.artist}
+                    </span>
                   )}
-                  <span className="text-[11px] sm:text-[13px] font-bold">멘트</span>
+                </div>
+                {setlist.setlist_items[currentIndex]?.selected_key && (
+                  <div className="px-2 sm:px-3 pb-0.5 sm:pb-1 bg-[#181b34] border border-primary-600 rounded-lg flex-shrink-0">
+                    <span className="text-[10px] sm:text-xs font-semibold text-primary-400">
+                      {setlist.setlist_items[currentIndex]?.selected_key}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-shrink-0">
+                {setlist.created_by === profile?.id && setlist.setlist_items[currentIndex]?.comment && (
+                  <button
+                    onClick={() => setShowComments(!showComments)}
+                    className={`px-2 sm:px-2.5 py-1 rounded-md flex items-center gap-1 sm:gap-1.5 transition-colors ${
+                      showComments
+                        ? 'bg-purple-200 text-purple-900'
+                        : 'bg-purple-200/50 text-purple-700 hover:bg-purple-200'
+                    }`}
+                  >
+                    {showComments && (
+                      <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 bg-purple-900 rounded-full" />
+                    )}
+                    <span className="text-[11px] sm:text-[13px] font-bold">멘트</span>
+                  </button>
+                )}
+                <button
+                  onClick={closeWorshipMode}
+                  className="text-white/70 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
-              )}
-              <button
-                onClick={closeWorshipMode}
-                className="text-white/70 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
+              </div>
             </div>
+
+            {/* 메모 영역 - 두 번째 줄 */}
+            {setlist.setlist_items[currentIndex]?.note && (
+              <div className="px-3 sm:px-6 lg:px-8 pb-3 sm:pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="px-2 py-0.5 bg-yellow-900/30 border border-yellow-600/50 rounded flex-shrink-0">
+                    <span className="text-[10px] sm:text-xs font-semibold text-yellow-400">메모</span>
+                  </div>
+                  <span className="text-xs sm:text-sm text-gray-300 truncate">
+                    {setlist.setlist_items[currentIndex]?.note}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 악보 영역 */}
