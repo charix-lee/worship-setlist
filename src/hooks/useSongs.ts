@@ -196,7 +196,64 @@ export function useSongs() {
     return data;
   };
 
-  const removeSheet = async (sheetId: string, fileUrl: string) => {
+  const checkSheetUsage = async (sheetId: string) => {
+    // 먼저 악보 정보 조회 (music_key, song_id)
+    const { data: sheetData, error: sheetError } = await supabase
+      .from('song_sheets')
+      .select('music_key, song_id')
+      .eq('id', sheetId)
+      .single();
+
+    if (sheetError) throw sheetError;
+    if (!sheetData) throw new Error('악보를 찾을 수 없습니다.');
+
+    // 이 악보를 사용하는 콘티 항목 확인
+    const { data: usedInSetlists, error: checkError } = await supabase
+      .from('setlist_items')
+      .select(`
+        id,
+        setlists (
+          id,
+          date,
+          service_type
+        )
+      `)
+      .eq('song_id', sheetData.song_id)
+      .eq('selected_key', sheetData.music_key);
+
+    if (checkError) throw checkError;
+
+    if (usedInSetlists && usedInSetlists.length > 0) {
+      const setlistInfo = usedInSetlists
+        .map((item: any) => {
+          const setlist = item.setlists;
+          if (setlist) {
+            const date = new Date(setlist.date).toLocaleDateString('ko-KR');
+            return `${date} ${setlist.service_type}`;
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      return {
+        isUsed: true,
+        setlists: setlistInfo,
+      };
+    }
+
+    return { isUsed: false, setlists: [] };
+  };
+
+  const removeSheet = async (sheetId: string, fileUrl: string, force: boolean = false) => {
+    // 강제 삭제가 아니면 사용 중인지 체크
+    if (!force) {
+      const usage = await checkSheetUsage(sheetId);
+      if (usage.isUsed) {
+        const setlistList = usage.setlists.join('\n• ');
+        throw new Error(`SHEET_IN_USE:${setlistList}`);
+      }
+    }
+
     // Storage에서 파일 삭제
     await deleteSheetFile(fileUrl);
 
@@ -226,5 +283,6 @@ export function useSongs() {
     deleteSong,
     addSheet,
     removeSheet,
+    checkSheetUsage,
   };
 }

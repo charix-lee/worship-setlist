@@ -8,9 +8,11 @@ import {
   FileText,
   Loader2,
   ChevronDown,
+  AlertTriangle,
 } from 'lucide-react';
 import { useSongs } from '@/hooks/useSongs';
 import Button from '@/components/Button';
+import Modal from '@/components/Modal';
 import type { SongWithSheets } from '@/types/database';
 import { MUSIC_KEYS } from '@/types/database';
 import toast from 'react-hot-toast';
@@ -40,6 +42,19 @@ function EditSongPage() {
   const [newSheetKey, setNewSheetKey] = useState('C');
   const [newSheetDescription, setNewSheetDescription] = useState('');
   const [uploading, setUploading] = useState(false);
+
+  // Delete confirmation modal
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    open: boolean;
+    sheetId: string;
+    fileUrl: string;
+    usedInSetlists: string[];
+  }>({
+    open: false,
+    sheetId: '',
+    fileUrl: '',
+    usedInSetlists: [],
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,11 +120,39 @@ function EditSongPage() {
 
   const handleDeleteSheet = async (sheetId: string, fileUrl: string) => {
     if (!song) return;
+
     try {
       await removeSheet(sheetId, fileUrl);
       const updated = await fetchSongById(song.id);
       if (updated) setSong(updated);
       toast.success('악보가 삭제되었습니다.');
+    } catch (error: any) {
+      const errorMessage = error?.message || '';
+
+      // 사용 중인 악보인 경우
+      if (errorMessage.startsWith('SHEET_IN_USE:')) {
+        const setlistList = errorMessage.replace('SHEET_IN_USE:', '').split('\n• ').filter(Boolean);
+        setDeleteConfirmModal({
+          open: true,
+          sheetId,
+          fileUrl,
+          usedInSetlists: setlistList,
+        });
+      } else {
+        toast.error('삭제 실패');
+      }
+    }
+  };
+
+  const confirmDeleteSheet = async () => {
+    if (!song) return;
+
+    try {
+      await removeSheet(deleteConfirmModal.sheetId, deleteConfirmModal.fileUrl, true);
+      const updated = await fetchSongById(song.id);
+      if (updated) setSong(updated);
+      toast.success('악보가 삭제되었습니다.');
+      setDeleteConfirmModal({ open: false, sheetId: '', fileUrl: '', usedInSetlists: [] });
     } catch {
       toast.error('삭제 실패');
     }
@@ -387,6 +430,58 @@ function EditSongPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteConfirmModal.open}
+        onClose={() => setDeleteConfirmModal({ open: false, sheetId: '', fileUrl: '', usedInSetlists: [] })}
+        title="악보 삭제 확인"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-gray-700 mb-3">
+                이 악보는 다음 콘티에서 사용 중입니다:
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                <ul className="space-y-1">
+                  {deleteConfirmModal.usedInSetlists.map((setlist, index) => (
+                    <li key={index} className="text-sm text-red-800 flex items-start gap-2">
+                      <span className="text-red-600 flex-shrink-0">•</span>
+                      <span>{setlist}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <p className="text-sm text-gray-700 font-medium">
+                그래도 삭제하시겠습니까?
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                삭제 시 콘티에서 해당 악보를 사용할 수 없게 됩니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              onClick={() => setDeleteConfirmModal({ open: false, sheetId: '', fileUrl: '', usedInSetlists: [] })}
+              className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              취소
+            </button>
+            <Button
+              onClick={confirmDeleteSheet}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              삭제
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

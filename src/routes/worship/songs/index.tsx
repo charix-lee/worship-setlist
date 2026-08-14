@@ -11,10 +11,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Type,
+  AlertTriangle,
 } from 'lucide-react';
 import { useSongs } from '@/hooks/useSongs';
 import { usePermissions } from '@/hooks/usePermissions';
 import Button from '@/components/Button';
+import Modal from '@/components/Modal';
 import LyricsModal from '@/components/LyricsModal';
 import type { SongWithSheets } from '@/types/database';
 import toast from 'react-hot-toast';
@@ -37,6 +39,17 @@ function SongsPage() {
   const [lyricsModalSong, setLyricsModalSong] = useState<SongWithSheets | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  // Delete confirmation modal
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    open: boolean;
+    songId: string;
+    songTitle: string;
+  }>({
+    open: false,
+    songId: '',
+    songTitle: '',
+  });
 
   const filteredSongs = useMemo(() => {
     if (!search.trim()) return songs;
@@ -65,13 +78,19 @@ function SongsPage() {
     fetchSongs(search.trim() || undefined);
   };
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`"${title}" 곡을 삭제하시겠습니까?\n연결된 악보 파일도 함께 삭제됩니다.`)) {
-      return;
-    }
+  const handleDelete = (id: string, title: string) => {
+    setDeleteConfirmModal({
+      open: true,
+      songId: id,
+      songTitle: title,
+    });
+  };
+
+  const confirmDelete = async () => {
     try {
-      await deleteSong(id);
+      await deleteSong(deleteConfirmModal.songId);
       toast.success('곡이 삭제되었습니다.');
+      setDeleteConfirmModal({ open: false, songId: '', songTitle: '' });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '삭제 실패');
     }
@@ -267,6 +286,47 @@ function SongsPage() {
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteConfirmModal.open}
+        onClose={() => setDeleteConfirmModal({ open: false, songId: '', songTitle: '' })}
+        title="곡 삭제 확인"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-gray-700 mb-2">
+                <span className="font-semibold">"{deleteConfirmModal.songTitle}"</span> 곡을 삭제하시겠습니까?
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-800">
+                  연결된 악보 파일도 함께 삭제됩니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              onClick={() => setDeleteConfirmModal({ open: false, songId: '', songTitle: '' })}
+              className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              취소
+            </button>
+            <Button
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              삭제
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {lyricsModalSong && lyricsModalSong.lyrics && (
         <LyricsModal
