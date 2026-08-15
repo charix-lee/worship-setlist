@@ -15,6 +15,7 @@ import {
 import { useSetlists } from '@/hooks/useSetlists';
 import { usePermissions } from '@/hooks/usePermissions';
 import Modal from '@/components/Modal';
+import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import Button from '@/components/Button';
 import { SERVICE_TYPES } from '@/types/database';
 import { getServiceTypeColors } from '@/utils/colors';
@@ -36,6 +37,17 @@ function SetlistsPage() {
   const [serviceType, setServiceType] = useState(SERVICE_TYPES[0]);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Delete confirmation modal
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    open: boolean;
+    setlistId: string;
+    setlistTitle: string;
+  }>({
+    open: false,
+    setlistId: '',
+    setlistTitle: '',
+  });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,12 +71,19 @@ function SetlistsPage() {
     }
   };
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`"${title}" 콘티를 삭제하시겠습니까?`)) return;
+  const handleDelete = (id: string, title: string) => {
+    setDeleteConfirmModal({
+      open: true,
+      setlistId: id,
+      setlistTitle: title,
+    });
+  };
 
+  const confirmDelete = async () => {
     try {
-      await deleteSetlist(id);
+      await deleteSetlist(deleteConfirmModal.setlistId);
       toast.success('콘티가 삭제되었습니다.');
+      setDeleteConfirmModal({ open: false, setlistId: '', setlistTitle: '' });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '삭제 실패');
     }
@@ -245,6 +264,16 @@ function SetlistsPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteConfirmModal.open}
+        onClose={() => setDeleteConfirmModal({ open: false, setlistId: '', setlistTitle: '' })}
+        onConfirm={confirmDelete}
+        title="콘티 삭제 확인"
+        itemName={deleteConfirmModal.setlistTitle}
+        warningMessage="콘티를 삭제하시겠습니까? 콘티에 포함된 모든 곡 정보와 설정이 삭제됩니다."
+      />
     </div>
   );
 }

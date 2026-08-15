@@ -366,6 +366,9 @@ function SetlistViewPage() {
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState(false);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
 
+  // 일반 성도/임원단 여부 체크 (제한된 뷰)
+  const isLimitedView = profile?.role === 'member' || profile?.role === 'staff';
+
   const toggleEditing = (itemId: string) => {
     setEditingItems((prev) => {
       const next = new Set(prev);
@@ -844,14 +847,16 @@ function SetlistViewPage() {
                 <Play className="w-4 h-4" />
                 <span className="hidden sm:inline">찬양</span>
               </button>
-              <button
-                onClick={copySongList}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
-                title="곡 리스트 복사"
-              >
-                <Copy className="w-4 h-4" />
-                <span className="hidden md:inline">곡 리스트 복사</span>
-              </button>
+              {!isLimitedView && (
+                <button
+                  onClick={copySongList}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+                  title="곡 리스트 복사"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span className="hidden md:inline">곡 리스트 복사</span>
+                </button>
+              )}
               {can.editSetlist && (
                 <button
                   onClick={() => navigate({ to: '/worship/setlists/$id', params: { id: id! } })}
@@ -902,17 +907,21 @@ function SetlistViewPage() {
                       <ImageIcon className="w-4 h-4" />
                       악보 이미지
                     </button>
-                    <div className="h-px bg-gray-200 my-1" />
-                    <button
-                      onClick={() => {
-                        handleExportPDF();
-                        setDownloadDropdownOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      전체 PDF
-                    </button>
+                    {!isLimitedView && (
+                      <>
+                        <div className="h-px bg-gray-200 my-1" />
+                        <button
+                          onClick={() => {
+                            handleExportPDF();
+                            setDownloadDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          전체 PDF
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -998,7 +1007,7 @@ function SetlistViewPage() {
                   {/* Song Details */}
                   <div className="flex flex-col gap-2.5 py-3.5">
                     {/* Memo Section */}
-                    {item.note && (
+                    {!isLimitedView && item.note && (
                       <div className="bg-yellow-50 px-3.5 py-3 rounded-lg">
                         <p className="text-[12px] font-bold text-yellow-900 uppercase mb-1.5">메모</p>
                         <p className="text-[14px] text-yellow-900 whitespace-pre-wrap">{item.note}</p>
@@ -1006,7 +1015,7 @@ function SetlistViewPage() {
                     )}
 
                     {/* Ment Section */}
-                    {item.comment && setlist.created_by === profile?.id && (
+                    {!isLimitedView && item.comment && setlist.created_by === profile?.id && (
                       <div className="bg-purple-50 px-3.5 py-3 rounded-lg">
                         <p className="text-[12px] font-bold text-purple-900 uppercase mb-1.5">멘트</p>
                         <p className="text-[14px] text-purple-900 whitespace-pre-wrap">{item.comment}</p>
@@ -1014,38 +1023,40 @@ function SetlistViewPage() {
                     )}
 
                     {/* Action Badges */}
-                    <div className="flex items-center justify-end gap-2 pt-3.5">
-                      {item.song.youtube_url && (
-                        <a
-                          href={item.song.youtube_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1.5 bg-red-100 text-red-600 text-[13px] font-semibold rounded-lg hover:bg-red-200 transition-colors"
-                        >
-                          유튜브
-                        </a>
-                      )}
-                      {item.song.lyrics && (
-                        <button
-                          onClick={() => setLyricsItem(item)}
-                          className="px-3 py-1.5 bg-green-100 text-green-700 text-[13px] font-semibold rounded-lg hover:bg-green-200 transition-colors"
-                        >
-                          가사보기
-                        </button>
-                      )}
-                      {can.editSetlist && (
-                        <button
-                          onClick={() => toggleEditing(item.id)}
-                          className={`px-3 py-1.5 text-[13px] font-semibold rounded-lg transition-colors ${
-                            editingItems.has(item.id)
-                              ? 'bg-primary-600 text-white'
-                              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                          }`}
-                        >
-                          {editingItems.has(item.id) ? '완료' : '그리기'}
-                        </button>
-                      )}
-                    </div>
+                    {!isLimitedView && (
+                      <div className="flex items-center justify-end gap-2 pt-3.5">
+                        {item.song.youtube_url && (
+                          <a
+                            href={item.song.youtube_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-red-100 text-red-600 text-[13px] font-semibold rounded-lg hover:bg-red-200 transition-colors"
+                          >
+                            유튜브
+                          </a>
+                        )}
+                        {item.song.lyrics && (
+                          <button
+                            onClick={() => setLyricsItem(item)}
+                            className="px-3 py-1.5 bg-green-100 text-green-700 text-[13px] font-semibold rounded-lg hover:bg-green-200 transition-colors"
+                          >
+                            가사보기
+                          </button>
+                        )}
+                        {can.editSetlist && (
+                          <button
+                            onClick={() => toggleEditing(item.id)}
+                            className={`px-3 py-1.5 text-[13px] font-semibold rounded-lg transition-colors ${
+                              editingItems.has(item.id)
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                            }`}
+                          >
+                            {editingItems.has(item.id) ? '완료' : '그리기'}
+                          </button>
+                        )}
+                      </div>
+                    )}
 
                     {/* Sheet Preview */}
                     {displaySheet ? (
@@ -1059,7 +1070,7 @@ function SetlistViewPage() {
                         ) : isImage ? (
                           <DrawingCanvas
                             imageUrl={displaySheet.file_url}
-                            annotations={item.annotations || undefined}
+                            annotations={isLimitedView ? undefined : (item.annotations || undefined)}
                             onSave={(annotations) => handleSaveAnnotations(item.id, annotations)}
                             readOnly={!can.editSetlist || !editingItems.has(item.id)}
                           />
@@ -1122,7 +1133,7 @@ function SetlistViewPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-shrink-0">
-                {setlist.created_by === profile?.id && setlist.setlist_items[currentIndex]?.comment && (
+                {!isLimitedView && setlist.created_by === profile?.id && setlist.setlist_items[currentIndex]?.comment && (
                   <button
                     onClick={() => setShowComments(!showComments)}
                     className={`px-2 sm:px-2.5 py-1 rounded-md flex items-center gap-1 sm:gap-1.5 transition-colors ${
@@ -1147,7 +1158,7 @@ function SetlistViewPage() {
             </div>
 
             {/* 메모 영역 - 두 번째 줄 */}
-            {setlist.setlist_items[currentIndex]?.note && (
+            {!isLimitedView && setlist.setlist_items[currentIndex]?.note && (
               <div className="px-3 sm:px-6 lg:px-8 pb-3 sm:pb-4">
                 <div className="flex items-center gap-2">
                   <div className="px-2 py-0.5 bg-yellow-900/30 border border-yellow-600/50 rounded flex-shrink-0">
@@ -1222,7 +1233,7 @@ function SetlistViewPage() {
                   <WorshipModeSheet
                     key={item.id}
                     imageUrl={displaySheet.file_url}
-                    annotations={item.annotations}
+                    annotations={isLimitedView ? null : item.annotations}
                     title={item.song.title}
                   />
                 </div>
@@ -1230,7 +1241,7 @@ function SetlistViewPage() {
             })()}
 
             {/* 멘트 영역 - 악보 위 오버레이 */}
-            {setlist.setlist_items[currentIndex]?.comment && setlist.created_by === profile?.id && showComments && (
+            {!isLimitedView && setlist.setlist_items[currentIndex]?.comment && setlist.created_by === profile?.id && showComments && (
               <div className="absolute bottom-0 left-0 right-0 bg-[rgba(19,17,34,0.85)] backdrop-blur-lg border-t border-[#1d1a39] px-4 sm:px-6 lg:px-8 py-3 sm:py-4 z-20">
                 <div className="flex flex-col gap-1.5 sm:gap-2">
                   <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-purple-200 rounded-md w-fit">
