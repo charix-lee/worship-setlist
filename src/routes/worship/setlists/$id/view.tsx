@@ -1015,7 +1015,7 @@ function SetlistViewPage() {
                     )}
 
                     {/* Ment Section */}
-                    {!isLimitedView && item.comment && setlist.created_by === profile?.id && (
+                    {!isLimitedView && item.comment && (setlist.created_by === profile?.id || profile?.role === 'admin') && (
                       <div className="bg-purple-50 px-3.5 py-3 rounded-lg">
                         <p className="text-[12px] font-bold text-purple-900 uppercase mb-1.5">멘트</p>
                         <p className="text-[14px] text-purple-900 whitespace-pre-wrap">{item.comment}</p>
@@ -1133,7 +1133,7 @@ function SetlistViewPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-shrink-0">
-                {!isLimitedView && setlist.created_by === profile?.id && setlist.setlist_items[currentIndex]?.comment && (
+                {!isLimitedView && (setlist.created_by === profile?.id || profile?.role === 'admin') && setlist.setlist_items[currentIndex]?.comment && (
                   <button
                     onClick={() => setShowComments(!showComments)}
                     className={`px-2 sm:px-2.5 py-1 rounded-md flex items-center gap-1 sm:gap-1.5 transition-colors ${
@@ -1241,7 +1241,7 @@ function SetlistViewPage() {
             })()}
 
             {/* 멘트 영역 - 악보 위 오버레이 */}
-            {!isLimitedView && setlist.setlist_items[currentIndex]?.comment && setlist.created_by === profile?.id && showComments && (
+            {!isLimitedView && setlist.setlist_items[currentIndex]?.comment && (setlist.created_by === profile?.id || profile?.role === 'admin') && showComments && (
               <div className="absolute bottom-0 left-0 right-0 bg-[rgba(19,17,34,0.85)] backdrop-blur-lg border-t border-[#1d1a39] px-4 sm:px-6 lg:px-8 py-3 sm:py-4 z-20">
                 <div className="flex flex-col gap-1.5 sm:gap-2">
                   <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-purple-200 rounded-md w-fit">
