@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, uploadSheetFile, deleteSheetFile } from '../lib/supabase';
 import type { SongWithSheets, SongSheet } from '../types/database';
+import { useAuth } from '../contexts/AuthContext';
 
 export function useSongs() {
+  const { profile } = useAuth();
   const [songs, setSongs] = useState<SongWithSheets[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,10 @@ export function useSongs() {
     lyrics?: string;
     memo?: string;
   }): Promise<SongWithSheets> => {
+    if (!profile?.church_id) {
+      throw new Error('교회 정보가 없습니다. 온보딩을 완료해주세요.');
+    }
+
     const { data, error } = await supabase
       .from('songs')
       .insert({
@@ -72,6 +78,7 @@ export function useSongs() {
         youtube_url: songData.youtube_url || null,
         lyrics: songData.lyrics || null,
         memo: songData.memo || null,
+        church_id: profile.church_id,
       })
       .select()
       .single();
@@ -175,6 +182,10 @@ export function useSongs() {
     const { publicUrl, fileName } = await uploadSheetFile(file, songId, musicKey, title);
 
     // DB에 레코드 추가
+    if (!profile?.church_id) {
+      throw new Error('교회 정보가 없습니다. 온보딩을 완료해주세요.');
+    }
+
     const { data, error } = await supabase
       .from('song_sheets')
       .insert({
@@ -182,6 +193,7 @@ export function useSongs() {
         music_key: musicKey,
         file_url: publicUrl,
         file_name: fileName,
+        church_id: profile.church_id,
       })
       .select()
       .single();

@@ -32,6 +32,7 @@ export interface Profile {
   church_id: string | null;
   role: UserRole;
   is_onboarded: boolean;
+  is_super_admin: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -88,6 +89,7 @@ export interface Song {
   youtube_url: string | null;
   lyrics: string | null; // 가사 텍스트 (방송팀용)
   memo: string | null;
+  church_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -99,6 +101,7 @@ export interface SongSheet {
   music_key: string;
   file_url: string;
   file_name: string;
+  church_id: string | null;
   created_at: string;
 }
 
@@ -108,6 +111,7 @@ export interface Setlist {
   date: string;
   service_type: string;
   description: string | null;
+  church_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -122,6 +126,7 @@ export interface SetlistItem {
   note: string | null;
   comment: string | null; // 생성자만 볼 수 있는 멘트
   annotations: string | null; // JSON string of drawing strokes
+  church_id: string | null;
   created_at: string;
 }
 

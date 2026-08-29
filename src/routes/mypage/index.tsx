@@ -15,6 +15,7 @@ import {
   Check,
   X,
   Shield,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChurches } from '@/hooks/useChurches';
@@ -230,8 +231,31 @@ function MyPage() {
             <p className="mt-3 text-sm text-gray-500">클릭하여 프로필 사진 변경</p>
           </div>
 
-          {/* 관리자 메뉴 */}
-          {isAdmin && (
+          {/* 슈퍼 관리자 메뉴 */}
+          {profile?.is_super_admin && (
+            <div className="p-6 lg:p-8 border-b border-gray-200 bg-gradient-to-r from-yellow-50 to-orange-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center">
+                    <Crown className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">슈퍼 관리자</h3>
+                    <p className="text-sm text-gray-600">전체 교회와 사용자를 관리합니다</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate({ to: '/super-admin/churches' })}
+                  className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-colors font-medium text-sm"
+                >
+                  전체 교회 관리
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 교회 관리자 메뉴 */}
+          {isAdmin && !profile?.is_super_admin && (
             <div className="p-6 lg:p-8 border-b border-gray-200 bg-gradient-to-r from-red-50 to-orange-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -239,8 +263,8 @@ function MyPage() {
                     <Shield className="w-5 h-5 text-red-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">관리자 메뉴</h3>
-                    <p className="text-sm text-gray-600">사용자 권한을 관리합니다</p>
+                    <h3 className="font-semibold text-gray-900">교회 관리자</h3>
+                    <p className="text-sm text-gray-600">본인 교회 사용자 권한을 관리합니다</p>
                   </div>
                 </div>
                 <button

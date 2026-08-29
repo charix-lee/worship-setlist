@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Setlist, SetlistWithItems, SetlistWithCreator } from '../types/database';
+import { useAuth } from '../contexts/AuthContext';
 
 export function useSetlists() {
+  const { profile } = useAuth();
   const [setlists, setSetlists] = useState<SetlistWithCreator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +94,10 @@ export function useSetlists() {
     service_type: string;
     description?: string;
   }): Promise<Setlist> => {
+    if (!profile?.church_id) {
+      throw new Error('교회 정보가 없습니다. 온보딩을 완료해주세요.');
+    }
+
     // 현재 로그인한 사용자 가져오기
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -102,6 +108,7 @@ export function useSetlists() {
         date: setlistData.date,
         service_type: setlistData.service_type,
         description: setlistData.description || null,
+        church_id: profile.church_id,
         created_by: user?.id || null,
       })
       .select()
@@ -156,6 +163,10 @@ export function useSetlists() {
     selectedKey?: string,
     note?: string
   ) => {
+    if (!profile?.church_id) {
+      throw new Error('교회 정보가 없습니다. 온보딩을 완료해주세요.');
+    }
+
     const { error } = await supabase
       .from('setlist_items')
       .insert({
@@ -164,6 +175,7 @@ export function useSetlists() {
         position,
         selected_key: selectedKey || null,
         note: note || null,
+        church_id: profile.church_id,
       });
 
     if (error) throw error;
