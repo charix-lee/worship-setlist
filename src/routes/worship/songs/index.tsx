@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   Search,
@@ -29,6 +29,7 @@ function SongsPage() {
   const {
     songs,
     loading,
+    totalCount,
     fetchSongs,
     deleteSong,
   } = useSongs();
@@ -50,31 +51,18 @@ function SongsPage() {
     songTitle: '',
   });
 
-  const filteredSongs = useMemo(() => {
-    if (!search.trim()) return songs;
-    const searchLower = search.toLowerCase();
-    return songs.filter(
-      (song) =>
-        song.title.toLowerCase().includes(searchLower) ||
-        song.artist?.toLowerCase().includes(searchLower)
-    );
-  }, [songs, search]);
-
   // 페이지네이션
-  const totalPages = Math.ceil(filteredSongs.length / ITEMS_PER_PAGE);
-  const paginatedSongs = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredSongs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredSongs, currentPage]);
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  // 초기 로딩 및 검색/페이지 변경 시 데이터 가져오기
+  useEffect(() => {
+    fetchSongs(search.trim() || undefined, currentPage, ITEMS_PER_PAGE);
+  }, [search, currentPage, fetchSongs]);
 
   // 검색어 변경 시 첫 페이지로
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setCurrentPage(1);
-  };
-
-  const handleSearch = () => {
-    fetchSongs(search.trim() || undefined);
   };
 
   const handleDelete = (id: string, title: string) => {
@@ -90,6 +78,8 @@ function SongsPage() {
       await deleteSong(deleteConfirmModal.songId);
       toast.success('곡이 삭제되었습니다.');
       setDeleteConfirmModal({ open: false, songId: '', songTitle: '' });
+      // 현재 페이지 다시 로드
+      fetchSongs(search.trim() || undefined, currentPage, ITEMS_PER_PAGE);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '삭제 실패');
     }
@@ -109,7 +99,6 @@ function SongsPage() {
             type="text"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="곡명 또는 아티스트로 검색..."
             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           />
@@ -129,7 +118,7 @@ function SongsPage() {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
         </div>
-      ) : filteredSongs.length === 0 ? (
+      ) : songs.length === 0 ? (
         <div className="text-center py-12">
           <Music2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">
@@ -146,7 +135,7 @@ function SongsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {paginatedSongs.map((song) => (
+          {songs.map((song) => (
             <div
               key={song.id}
               className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-primary-300 hover:shadow-md transition-all cursor-pointer"

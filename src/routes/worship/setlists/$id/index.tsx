@@ -176,7 +176,7 @@ function SetlistEditPage() {
     addItemToSetlist,
     reorderSetlistItems,
   } = useSetlists();
-  const { songs, fetchSongs } = useSongs();
+  const { songs, fetchAllSongs } = useSongs();
   const { can, profile } = usePermissions();
   const { loading: authLoading } = useAuth();
 
@@ -507,7 +507,7 @@ function SetlistEditPage() {
               </h2>
               <button
                 onClick={() => {
-                  fetchSongs();
+                  fetchAllSongs();
                   setAddModalOpen(true);
                 }}
                 className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-primary-600 hover:text-primary-700"

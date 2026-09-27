@@ -8,8 +8,45 @@ export function useSongs() {
   const [songs, setSongs] = useState<SongWithSheets[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const fetchSongs = useCallback(async (search?: string) => {
+  const fetchSongs = useCallback(async (search?: string, page: number = 1, limit: number = 10) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      let query = supabase
+        .from('songs')
+        .select(`
+          *,
+          song_sheets (*)
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false });
+
+      if (search) {
+        query = query.or(`title.ilike.%${search}%,artist.ilike.%${search}%`);
+      }
+
+      // 페이지네이션
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+      query = query.range(from, to);
+
+      const { data, error: fetchError, count } = await query;
+
+      if (fetchError) throw fetchError;
+
+      setSongs(data || []);
+      setTotalCount(count || 0);
+    } catch (err) {
+      console.error('곡 목록 조회 실패:', err);
+      setError(err instanceof Error ? err.message : '조회 실패');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchAllSongs = useCallback(async (search?: string) => {
     setLoading(true);
     setError(null);
 
@@ -31,6 +68,7 @@ export function useSongs() {
       if (fetchError) throw fetchError;
 
       setSongs(data || []);
+      setTotalCount(data?.length || 0);
     } catch (err) {
       console.error('곡 목록 조회 실패:', err);
       setError(err instanceof Error ? err.message : '조회 실패');
@@ -281,14 +319,16 @@ export function useSongs() {
   };
 
   useEffect(() => {
-    fetchSongs();
-  }, [fetchSongs]);
+    // 초기 로딩은 각 페이지에서 직접 호출
+  }, []);
 
   return {
     songs,
     loading,
     error,
+    totalCount,
     fetchSongs,
+    fetchAllSongs,
     fetchSongById,
     createSong,
     updateSong,

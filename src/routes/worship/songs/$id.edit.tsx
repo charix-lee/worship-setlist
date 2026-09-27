@@ -23,7 +23,7 @@ export const Route = createFileRoute('/worship/songs/$id/edit')({
 function EditSongPage() {
   const { id } = useParams({ strict: false });
   const navigate = useNavigate();
-  const { fetchSongById, updateSong, addSheet, removeSheet, songs } = useSongs();
+  const { fetchSongById, updateSong, addSheet, removeSheet, songs, fetchAllSongs } = useSongs();
 
   const [song, setSong] = useState<SongWithSheets | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +56,11 @@ function EditSongPage() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 중복 체크를 위해 전체 곡 목록 가져오기
+  useEffect(() => {
+    fetchAllSongs();
+  }, [fetchAllSongs]);
 
   useEffect(() => {
     if (!id) return;

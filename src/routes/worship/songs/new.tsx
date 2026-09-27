@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   ArrowLeft,
@@ -26,9 +26,14 @@ interface SheetFile {
 
 function NewSongPage() {
   const navigate = useNavigate();
-  const { createSong, addSheet, songs } = useSongs();
+  const { createSong, addSheet, songs, fetchAllSongs } = useSongs();
 
   const [saving, setSaving] = useState(false);
+
+  // 초기 로딩: 중복 체크를 위해 전체 곡 목록 가져오기
+  useEffect(() => {
+    fetchAllSongs();
+  }, [fetchAllSongs]);
 
   // Form states
   const [title, setTitle] = useState('');
