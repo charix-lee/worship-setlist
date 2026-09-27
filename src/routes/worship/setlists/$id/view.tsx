@@ -197,11 +197,10 @@ function WorshipModeSheet({
       const strokes = Array.isArray(parsed) ? parsed : (parsed.strokes || []);
       const badges = Array.isArray(parsed) ? [] : (parsed.badges || []);
 
-      // Draw strokes
+      // Draw strokes with Bezier curves and pressure variation
       for (const stroke of strokes) {
         if (stroke.points.length < 2) continue;
 
-        ctx.beginPath();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
@@ -219,16 +218,49 @@ function WorshipModeSheet({
           ctx.globalCompositeOperation = 'source-over';
         }
 
-        ctx.lineWidth = stroke.width;
+        // Draw using Bezier curves with pressure variation (matching DrawingCanvas)
+        const points = stroke.points;
 
-        const [first, ...rest] = stroke.points;
-        ctx.moveTo(first.x * dimensions.width, first.y * dimensions.height);
+        if (points.length === 1) {
+          // Single point - draw a dot
+          const p = points[0];
+          const pressure = p.pressure || 0.5;
+          const radius = (stroke.width * (0.5 + pressure * 0.5)) / 2;
+          ctx.beginPath();
+          ctx.arc(p.x * dimensions.width, p.y * dimensions.height, radius, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Multiple points - draw smooth curve
+          ctx.beginPath();
+          const firstPoint = points[0];
+          ctx.moveTo(firstPoint.x * dimensions.width, firstPoint.y * dimensions.height);
 
-        for (const point of rest) {
-          ctx.lineTo(point.x * dimensions.width, point.y * dimensions.height);
+          for (let i = 1; i < points.length; i++) {
+            const p0 = points[i - 1];
+            const p1 = points[i];
+
+            const x0 = p0.x * dimensions.width;
+            const y0 = p0.y * dimensions.height;
+            const x1 = p1.x * dimensions.width;
+            const y1 = p1.y * dimensions.height;
+
+            const avgPressure = ((p0.pressure || 0.5) + (p1.pressure || 0.5)) / 2;
+            ctx.lineWidth = stroke.width * (0.5 + avgPressure * 0.5);
+
+            // Use quadratic curve for smoothness
+            const cpX = (x0 + x1) / 2;
+            const cpY = (y0 + y1) / 2;
+            ctx.quadraticCurveTo(x0, y0, cpX, cpY);
+          }
+
+          // Draw final segment to last point
+          if (points.length > 1) {
+            const lastPoint = points[points.length - 1];
+            ctx.lineTo(lastPoint.x * dimensions.width, lastPoint.y * dimensions.height);
+          }
+
+          ctx.stroke();
         }
-
-        ctx.stroke();
       }
 
       ctx.globalAlpha = 1;
@@ -444,11 +476,10 @@ function SetlistViewPage() {
       const strokes = Array.isArray(parsed) ? parsed : (parsed.strokes || []);
       const badges = Array.isArray(parsed) ? [] : (parsed.badges || []);
 
-      // Draw strokes
+      // Draw strokes with Bezier curves and pressure variation
       for (const stroke of strokes) {
         if (stroke.points.length < 2) continue;
 
-        ctx.beginPath();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
@@ -466,16 +497,49 @@ function SetlistViewPage() {
           ctx.globalCompositeOperation = 'source-over';
         }
 
-        ctx.lineWidth = stroke.width;
+        // Draw using Bezier curves with pressure variation (matching DrawingCanvas)
+        const points = stroke.points;
 
-        const [first, ...rest] = stroke.points;
-        ctx.moveTo(first.x * width, first.y * height);
+        if (points.length === 1) {
+          // Single point - draw a dot
+          const p = points[0];
+          const pressure = p.pressure || 0.5;
+          const radius = (stroke.width * (0.5 + pressure * 0.5)) / 2;
+          ctx.beginPath();
+          ctx.arc(p.x * width, p.y * height, radius, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Multiple points - draw smooth curve
+          ctx.beginPath();
+          const firstPoint = points[0];
+          ctx.moveTo(firstPoint.x * width, firstPoint.y * height);
 
-        for (const point of rest) {
-          ctx.lineTo(point.x * width, point.y * height);
+          for (let i = 1; i < points.length; i++) {
+            const p0 = points[i - 1];
+            const p1 = points[i];
+
+            const x0 = p0.x * width;
+            const y0 = p0.y * height;
+            const x1 = p1.x * width;
+            const y1 = p1.y * height;
+
+            const avgPressure = ((p0.pressure || 0.5) + (p1.pressure || 0.5)) / 2;
+            ctx.lineWidth = stroke.width * (0.5 + avgPressure * 0.5);
+
+            // Use quadratic curve for smoothness
+            const cpX = (x0 + x1) / 2;
+            const cpY = (y0 + y1) / 2;
+            ctx.quadraticCurveTo(x0, y0, cpX, cpY);
+          }
+
+          // Draw final segment to last point
+          if (points.length > 1) {
+            const lastPoint = points[points.length - 1];
+            ctx.lineTo(lastPoint.x * width, lastPoint.y * height);
+          }
+
+          ctx.stroke();
         }
-
-        ctx.stroke();
       }
 
       ctx.globalAlpha = 1;
