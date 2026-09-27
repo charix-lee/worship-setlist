@@ -389,6 +389,14 @@ export default function DrawingCanvas({
     return Math.sqrt(dx * dx + dy * dy);
   };
 
+  // 두 포인터의 중심점 계산
+  const getCenter = (p1: PointerEvent, p2: PointerEvent) => {
+    return {
+      x: (p1.clientX + p2.clientX) / 2,
+      y: (p1.clientY + p2.clientY) / 2,
+    };
+  };
+
   // Pointer event handlers
   const handlePointerDown = (e: React.PointerEvent) => {
     if (readOnly) return;
@@ -485,12 +493,41 @@ export default function DrawingCanvas({
       if (lastPinchDistance.current > 0) {
         const scaleFactor = currentDistance / lastPinchDistance.current;
         const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * scaleFactor));
-        setZoom(newZoom);
 
-        // 원래 크기(1배)로 돌아가면 팬도 리셋
-        if (newZoom === MIN_ZOOM) {
-          setPan({ x: 0, y: 0 });
+        // 줌 중심점 계산 (두 손가락의 중심)
+        const center = getCenter(pointers[0], pointers[1]);
+        const rect = canvasRef.current?.getBoundingClientRect();
+
+        if (rect) {
+          // 컨테이너 기준 중심점
+          const zoomPointX = center.x - rect.left;
+          const zoomPointY = center.y - rect.top;
+
+          // 줌 변화율
+          const zoomChange = newZoom / zoom;
+
+          // 중심점을 기준으로 팬 조정
+          const newPanX = zoomPointX - (zoomPointX - pan.x) * zoomChange;
+          const newPanY = zoomPointY - (zoomPointY - pan.y) * zoomChange;
+
+          // 원래 크기(1배)로 돌아가면 팬도 리셋
+          if (newZoom === MIN_ZOOM) {
+            setPan({ x: 0, y: 0 });
+          } else {
+            // 팬 범위 제한
+            const maxPanX = 0;
+            const minPanX = -(dimensions.width * (newZoom - 1));
+            const maxPanY = 0;
+            const minPanY = -(dimensions.height * (newZoom - 1));
+
+            setPan({
+              x: Math.max(minPanX, Math.min(maxPanX, newPanX)),
+              y: Math.max(minPanY, Math.min(maxPanY, newPanY)),
+            });
+          }
         }
+
+        setZoom(newZoom);
       }
 
       lastPinchDistance.current = currentDistance;
@@ -619,7 +656,32 @@ export default function DrawingCanvas({
 
   // Zoom controls
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(MAX_ZOOM, prev + ZOOM_STEP));
+    const newZoom = Math.min(MAX_ZOOM, zoom + ZOOM_STEP);
+
+    // 화면 중앙을 기준으로 확대
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      const zoomChange = newZoom / zoom;
+
+      const newPanX = centerX - (centerX - pan.x) * zoomChange;
+      const newPanY = centerY - (centerY - pan.y) * zoomChange;
+
+      // 팬 범위 제한
+      const maxPanX = 0;
+      const minPanX = -(dimensions.width * (newZoom - 1));
+      const maxPanY = 0;
+      const minPanY = -(dimensions.height * (newZoom - 1));
+
+      setPan({
+        x: Math.max(minPanX, Math.min(maxPanX, newPanX)),
+        y: Math.max(minPanY, Math.min(maxPanY, newPanY)),
+      });
+    }
+
+    setZoom(newZoom);
   };
 
   // Add badge at position
