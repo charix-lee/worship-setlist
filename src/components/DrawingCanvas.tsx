@@ -360,12 +360,17 @@ export default function DrawingCanvas({
 
   // Get point from event (normalized coordinates)
   const getPoint = (e: React.PointerEvent): Point | null => {
-    if (!canvasRef.current) return null;
-    const rect = canvasRef.current.getBoundingClientRect();
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
 
-    // 화면 좌표를 캔버스 좌표로 변환 (zoom, pan 고려)
-    const canvasX = (e.clientX - rect.left - pan.x) / zoom;
-    const canvasY = (e.clientY - rect.top - pan.y) / zoom;
+    // 화면 좌표를 컨테이너 기준 좌표로 변환
+    const containerX = e.clientX - rect.left;
+    const containerY = e.clientY - rect.top;
+
+    // transform 역변환: translate(pan.x, pan.y) scale(zoom)
+    // 화면 좌표에서 pan을 빼고 zoom으로 나누면 원본 캔버스 좌표
+    const canvasX = (containerX - pan.x) / zoom;
+    const canvasY = (containerY - pan.y) / zoom;
 
     // 정규화된 좌표 (0-1)
     const normalizedX = canvasX / dimensions.width;
@@ -417,7 +422,7 @@ export default function DrawingCanvas({
 
       // 핀치 시작 위치 저장 (화면 좌표)
       const center = getCenter(pointers[0], pointers[1]);
-      const rect = canvasRef.current?.getBoundingClientRect();
+      const rect = containerRef.current?.getBoundingClientRect();
       if (rect) {
         pinchStartCenter.current = {
           x: center.x - rect.left,
@@ -1103,12 +1108,17 @@ export default function DrawingCanvas({
                 if (!rect) return;
 
                 const handleMove = (moveE: PointerEvent) => {
-                  // transform이 적용된 div의 좌표로 변환
-                  const containerX = (moveE.clientX - rect.left - pan.x) / zoom;
-                  const containerY = (moveE.clientY - rect.top - pan.y) / zoom;
+                  // 화면 좌표를 컨테이너 기준 좌표로 변환
+                  const containerX = moveE.clientX - rect.left;
+                  const containerY = moveE.clientY - rect.top;
 
-                  const newX = containerX / dimensions.width;
-                  const newY = containerY / dimensions.height;
+                  // transform 역변환
+                  const canvasX = (containerX - pan.x) / zoom;
+                  const canvasY = (containerY - pan.y) / zoom;
+
+                  // 정규화
+                  const newX = canvasX / dimensions.width;
+                  const newY = canvasY / dimensions.height;
 
                   updateBadgePosition(badge.id,
                     Math.max(0, Math.min(1, newX)),
