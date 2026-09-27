@@ -216,6 +216,7 @@ export default function DrawingCanvas({
   const pinchStartCenter = useRef<{ x: number; y: number } | null>(null);
   const pinchStartZoom = useRef<number>(1);
   const pinchStartPan = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const pinchLastCenter = useRef<{ x: number; y: number } | null>(null);
 
   // Check if there are unsaved changes
   const hasChanges = JSON.stringify(strokes) !== JSON.stringify(savedStrokes) ||
@@ -428,6 +429,10 @@ export default function DrawingCanvas({
           x: center.x - rect.left,
           y: center.y - rect.top,
         };
+        pinchLastCenter.current = {
+          x: center.x - rect.left,
+          y: center.y - rect.top,
+        };
         pinchStartZoom.current = zoom;
         pinchStartPan.current = { x: pan.x, y: pan.y };
       }
@@ -512,13 +517,23 @@ export default function DrawingCanvas({
       activePointers.current.set(e.pointerId, e.nativeEvent);
     }
 
-    // 두 손가락: 핀치 줌 (확대/축소)
+    // 두 손가락: 핀치 줌 (확대/축소) + 팬 (드래그 이동)
     if (activePointers.current.size === 2) {
       e.preventDefault();
       const pointers = Array.from(activePointers.current.values());
       const currentDistance = getDistance(pointers[0], pointers[1]);
 
-      if (pinchStartDistance.current > 0 && pinchStartCenter.current) {
+      // 현재 중심점 계산
+      const center = getCenter(pointers[0], pointers[1]);
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const currentCenter = {
+        x: center.x - rect.left,
+        y: center.y - rect.top,
+      };
+
+      if (pinchStartDistance.current > 0 && pinchStartCenter.current && pinchLastCenter.current) {
         // 시작 거리 대비 현재 거리의 비율로 zoom 계산
         const scaleFactor = currentDistance / pinchStartDistance.current;
         const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStartZoom.current * scaleFactor));
@@ -526,6 +541,7 @@ export default function DrawingCanvas({
         // 원래 크기(1배)로 돌아가면 팬도 리셋
         if (newZoom === MIN_ZOOM) {
           setPan({ x: 0, y: 0 });
+          pinchLastCenter.current = currentCenter;
         } else {
           // 핀치 시작 위치(화면 좌표)가 계속 같은 위치에 있도록 pan 조정
           const startCenter = pinchStartCenter.current;
@@ -537,8 +553,14 @@ export default function DrawingCanvas({
           const canvasY = (startCenter.y - startPan.y) / startZoom;
 
           // 새로운 zoom에서 같은 캔버스 좌표가 화면의 같은 위치에 있도록 pan 계산
-          const newPanX = startCenter.x - canvasX * newZoom;
-          const newPanY = startCenter.y - canvasY * newZoom;
+          let newPanX = startCenter.x - canvasX * newZoom;
+          let newPanY = startCenter.y - canvasY * newZoom;
+
+          // 두 손가락 드래그로 팬 추가 (중심점 이동)
+          const centerDeltaX = currentCenter.x - pinchLastCenter.current.x;
+          const centerDeltaY = currentCenter.y - pinchLastCenter.current.y;
+          newPanX += centerDeltaX;
+          newPanY += centerDeltaY;
 
           // 팬 범위 제한
           const maxPanX = 0;
@@ -550,6 +572,9 @@ export default function DrawingCanvas({
             x: Math.max(minPanX, Math.min(maxPanX, newPanX)),
             y: Math.max(minPanY, Math.min(maxPanY, newPanY)),
           });
+
+          // 현재 중심점을 이전 중심점으로 저장
+          pinchLastCenter.current = currentCenter;
         }
 
         setZoom(newZoom);
@@ -610,6 +635,7 @@ export default function DrawingCanvas({
     if (activePointers.current.size < 2) {
       pinchStartDistance.current = 0;
       pinchStartCenter.current = null;
+      pinchLastCenter.current = null;
       pinchStartZoom.current = 1;
       pinchStartPan.current = { x: 0, y: 0 };
     }
@@ -647,6 +673,7 @@ export default function DrawingCanvas({
     if (activePointers.current.size < 2) {
       pinchStartDistance.current = 0;
       pinchStartCenter.current = null;
+      pinchLastCenter.current = null;
       pinchStartZoom.current = 1;
       pinchStartPan.current = { x: 0, y: 0 };
     }
@@ -1150,9 +1177,12 @@ export default function DrawingCanvas({
       </div>
 
       {/* Zoom/Pan 도움말 */}
-      {!readOnly && isTablet() && (
+      {!readOnly && (
         <div className="text-xs text-gray-500 text-center">
-          💡 Apple Pencil로 그리기 | 손가락으로 이동 | 두 손가락으로 확대/축소
+          {isTablet()
+            ? '💡 Apple Pencil로 그리기 | 손가락으로 이동 | 두 손가락으로 확대/축소'
+            : '💡 한 손가락으로 그리기 | 두 손가락으로 확대/축소/이동'
+          }
         </div>
       )}
     </div>
