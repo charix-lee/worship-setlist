@@ -1,11 +1,17 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Highlighter, Tag } from 'lucide-react';
+import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Highlighter, Tag, ZoomIn, ZoomOut } from 'lucide-react';
 
 type ToolType = 'pen' | 'highlighter' | 'eraser' | 'badge';
 type EraserMode = 'partial' | 'stroke';
 
+interface Point {
+  x: number;
+  y: number;
+  pressure: number;
+}
+
 interface Stroke {
-  points: { x: number; y: number; pressure: number }[];
+  points: Point[];
   color: string;
   width: number;
   tool: ToolType;
@@ -60,6 +66,11 @@ const BADGE_COLORS = [
   '#E0BBE4', // 파스텔 퍼플
 ];
 
+// Zoom 설정
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+const ZOOM_STEP = 0.5;
+
 // 태블릿(iPad, Galaxy Tab) 감지
 const isTablet = (): boolean => {
   if (typeof navigator === 'undefined') return false;
@@ -70,6 +81,93 @@ const isTablet = (): boolean => {
   const isGalaxyTab = /SM-T/.test(ua) || (/Android/.test(ua) && !/Mobile/.test(ua));
   return isIPad || isGalaxyTab;
 };
+
+// Bezier curve를 사용한 부드러운 선 그리기
+function drawSmoothStroke(
+  ctx: CanvasRenderingContext2D,
+  points: Point[],
+  color: string,
+  baseWidth: number,
+  tool: ToolType,
+  scale: number,
+  offsetX: number,
+  offsetY: number,
+  canvasWidth: number,
+  canvasHeight: number
+) {
+  if (points.length < 2) return;
+
+  ctx.beginPath();
+
+  if (tool === 'eraser') {
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'destination-out';
+  } else if (tool === 'highlighter') {
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = HIGHLIGHTER_OPACITY;
+    ctx.globalCompositeOperation = 'source-over';
+  } else {
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // 첫 점
+  const firstPoint = points[0];
+  const firstX = firstPoint.x * canvasWidth * scale + offsetX;
+  const firstY = firstPoint.y * canvasHeight * scale + offsetY;
+
+  ctx.moveTo(firstX, firstY);
+
+  if (points.length === 2) {
+    // 두 점만 있으면 직선
+    const secondPoint = points[1];
+    const secondX = secondPoint.x * canvasWidth * scale + offsetX;
+    const secondY = secondPoint.y * canvasHeight * scale + offsetY;
+
+    // 필압 반영
+    const avgPressure = (firstPoint.pressure + secondPoint.pressure) / 2;
+    ctx.lineWidth = baseWidth * (0.5 + avgPressure * 0.5) * scale;
+
+    ctx.lineTo(secondX, secondY);
+    ctx.stroke();
+    return;
+  }
+
+  // 3개 이상의 점: Quadratic Bezier curve로 부드럽게 그리기
+  for (let i = 1; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+
+    const x0 = p0.x * canvasWidth * scale + offsetX;
+    const y0 = p0.y * canvasHeight * scale + offsetY;
+    const x1 = p1.x * canvasWidth * scale + offsetX;
+    const y1 = p1.y * canvasHeight * scale + offsetY;
+
+    // 중간점을 control point로 사용
+    const cpX = (x0 + x1) / 2;
+    const cpY = (y0 + y1) / 2;
+
+    // 필압 반영
+    const avgPressure = (p0.pressure + p1.pressure) / 2;
+    ctx.lineWidth = baseWidth * (0.5 + avgPressure * 0.5) * scale;
+
+    ctx.quadraticCurveTo(x0, y0, cpX, cpY);
+  }
+
+  // 마지막 점까지 그리기
+  const lastPoint = points[points.length - 1];
+  const lastX = lastPoint.x * canvasWidth * scale + offsetX;
+  const lastY = lastPoint.y * canvasHeight * scale + offsetY;
+
+  ctx.lineWidth = baseWidth * (0.5 + lastPoint.pressure * 0.5) * scale;
+  ctx.lineTo(lastX, lastY);
+  ctx.stroke();
+
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
 
 export default function DrawingCanvas({
   imageUrl,
@@ -109,8 +207,15 @@ export default function DrawingCanvas({
   // Canvas dimensions
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // 멀티터치 감지용 (확대 시 그리기 취소)
-  const activePointers = useRef<Set<number>>(new Set());
+  // Zoom & Pan state
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  // 멀티터치 감지용
+  const activePointers = useRef<Map<number, PointerEvent>>(new Map());
+  const lastPinchDistance = useRef<number>(0);
 
   // Check if there are unsaved changes
   const hasChanges = JSON.stringify(strokes) !== JSON.stringify(savedStrokes) ||
@@ -183,7 +288,10 @@ export default function DrawingCanvas({
   // Set up canvas context
   useEffect(() => {
     if (!canvasRef.current) return;
-    const context = canvasRef.current.getContext('2d');
+    const context = canvasRef.current.getContext('2d', {
+      alpha: true,
+      desynchronized: true, // 성능 향상
+    });
     if (context) {
       context.lineCap = 'round';
       context.lineJoin = 'round';
@@ -205,40 +313,22 @@ export default function DrawingCanvas({
     const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
 
     for (const stroke of allStrokes) {
-      if (stroke.points.length < 2) continue;
+      if (stroke.points.length < 1) continue;
 
-      ctx.beginPath();
-
-      if (stroke.tool === 'eraser') {
-        // Eraser removes only drawn content, not the background image
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = 'destination-out';
-      } else if (stroke.tool === 'highlighter') {
-        ctx.strokeStyle = stroke.color;
-        ctx.globalAlpha = HIGHLIGHTER_OPACITY;
-        ctx.globalCompositeOperation = 'source-over';
-      } else {
-        ctx.strokeStyle = stroke.color;
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = 'source-over';
-      }
-
-      ctx.lineWidth = stroke.width;
-
-      const [first, ...rest] = stroke.points;
-      ctx.moveTo(first.x * dimensions.width, first.y * dimensions.height);
-
-      for (const point of rest) {
-        ctx.lineTo(point.x * dimensions.width, point.y * dimensions.height);
-      }
-
-      ctx.stroke();
+      drawSmoothStroke(
+        ctx,
+        stroke.points,
+        stroke.color,
+        stroke.width,
+        stroke.tool,
+        zoom,
+        pan.x,
+        pan.y,
+        width,
+        height
+      );
     }
-
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
-  }, [ctx, dimensions, strokes, currentStroke]);
+  }, [ctx, dimensions, strokes, currentStroke, zoom, pan]);
 
   useEffect(() => {
     redraw();
@@ -251,8 +341,8 @@ export default function DrawingCanvas({
       if (stroke.tool === 'eraser') continue; // Skip eraser strokes
 
       for (const p of stroke.points) {
-        const dx = (p.x - point.x) * dimensions.width;
-        const dy = (p.y - point.y) * dimensions.height;
+        const dx = (p.x - point.x) * dimensions.width * zoom;
+        const dy = (p.y - point.y) * dimensions.height * zoom;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // Check if point is within eraser radius + stroke width
@@ -262,7 +352,7 @@ export default function DrawingCanvas({
       }
     }
     return -1;
-  }, [strokes, dimensions, eraserWidth]);
+  }, [strokes, dimensions, eraserWidth, zoom]);
 
   // Remove stroke at index
   const removeStrokeAt = useCallback((index: number) => {
@@ -271,14 +361,23 @@ export default function DrawingCanvas({
     }
   }, [strokes.length]);
 
-  // Get point from event
-  const getPoint = (e: React.PointerEvent) => {
+  // Get point from event (normalized coordinates)
+  const getPoint = (e: React.PointerEvent): Point | null => {
     if (!canvasRef.current) return null;
     const rect = canvasRef.current.getBoundingClientRect();
+
+    // 화면 좌표를 캔버스 좌표로 변환 (zoom, pan 고려)
+    const canvasX = (e.clientX - rect.left - pan.x) / zoom;
+    const canvasY = (e.clientY - rect.top - pan.y) / zoom;
+
+    // 정규화된 좌표 (0-1)
+    const normalizedX = canvasX / dimensions.width;
+    const normalizedY = canvasY / dimensions.height;
+
     return {
-      x: (e.clientX - rect.left) / dimensions.width,
-      y: (e.clientY - rect.top) / dimensions.height,
-      pressure: e.pressure || 0.5,
+      x: normalizedX,
+      y: normalizedY,
+      pressure: e.pressure > 0 ? e.pressure : 0.5, // 압력 없으면 기본값
     };
   };
 
@@ -286,30 +385,67 @@ export default function DrawingCanvas({
   const cancelDrawing = useCallback(() => {
     setCurrentStroke(null);
     setIsDrawing(false);
+    setIsPanning(false);
   }, []);
+
+  // 두 포인터 사이의 거리 계산
+  const getDistance = (p1: PointerEvent, p2: PointerEvent): number => {
+    const dx = p1.clientX - p2.clientX;
+    const dy = p1.clientY - p2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // 두 포인터의 중심점 계산
+  const getCenter = (p1: PointerEvent, p2: PointerEvent) => {
+    return {
+      x: (p1.clientX + p2.clientX) / 2,
+      y: (p1.clientY + p2.clientY) / 2,
+    };
+  };
 
   // Pointer event handlers
   const handlePointerDown = (e: React.PointerEvent) => {
     if (readOnly) return;
 
-    // 터치인 경우 포인터 추적
-    if (e.pointerType === 'touch') {
-      activePointers.current.add(e.pointerId);
+    // 포인터 추가
+    activePointers.current.set(e.pointerId, e.nativeEvent);
 
-      // 두 손가락 이상이면 그리기 취소 (확대/스크롤용)
-      if (activePointers.current.size >= 2) {
-        cancelDrawing();
-        return;
+    // 두 손가락: 핀치 줌/팬 시작
+    if (activePointers.current.size === 2) {
+      cancelDrawing();
+      const pointers = Array.from(activePointers.current.values());
+      lastPinchDistance.current = getDistance(pointers[0], pointers[1]);
+      return;
+    }
+
+    // 세 손가락 이상: 무시
+    if (activePointers.current.size > 2) {
+      cancelDrawing();
+      return;
+    }
+
+    // 한 손가락: 그리기 또는 팬
+    // 태블릿에서는 펜만 그리기, 손가락은 팬
+    if (isTablet()) {
+      if (e.pointerType === 'pen') {
+        // Apple Pencil로 그리기
+        e.preventDefault();
+        startDrawing(e);
+      } else {
+        // 손가락으로 팬
+        e.preventDefault();
+        startPanning(e);
       }
+    } else {
+      // 비태블릿: 모두 그리기
+      e.preventDefault();
+      startDrawing(e);
     }
 
-    // 태블릿에서는 펜(스타일러스)으로만 그리기 허용
-    if (isTablet() && e.pointerType !== 'pen') {
-      return; // 손가락 터치는 스크롤/확대용으로 무시
-    }
+    (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+  };
 
-    e.preventDefault();
-
+  const startDrawing = (e: React.PointerEvent) => {
     const point = getPoint(e);
     if (!point) return;
 
@@ -326,7 +462,6 @@ export default function DrawingCanvas({
         removeStrokeAt(strokeIndex);
       }
       setIsDrawing(true);
-      (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
       return;
     }
 
@@ -337,22 +472,64 @@ export default function DrawingCanvas({
       width: currentWidth,
       tool: tool as 'pen' | 'highlighter' | 'eraser',
     });
+  };
 
-    // Capture pointer for smooth drawing
-    (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+  const startPanning = (e: React.PointerEvent) => {
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDrawing || readOnly) return;
+    if (readOnly) return;
 
-    // 멀티터치 중이면 그리기 취소
-    if (e.pointerType === 'touch' && activePointers.current.size >= 2) {
-      cancelDrawing();
+    // 포인터 업데이트
+    if (activePointers.current.has(e.pointerId)) {
+      activePointers.current.set(e.pointerId, e.nativeEvent);
+    }
+
+    // 두 손가락: 핀치 줌
+    if (activePointers.current.size === 2) {
+      e.preventDefault();
+      const pointers = Array.from(activePointers.current.values());
+      const currentDistance = getDistance(pointers[0], pointers[1]);
+
+      if (lastPinchDistance.current > 0) {
+        const scaleFactor = currentDistance / lastPinchDistance.current;
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * scaleFactor));
+
+        // 줌 중심점 계산
+        const center = getCenter(pointers[0], pointers[1]);
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (rect) {
+          const zoomPointX = center.x - rect.left;
+          const zoomPointY = center.y - rect.top;
+
+          // 줌 중심을 기준으로 팬 조정
+          const zoomChange = newZoom / zoom;
+          setPan({
+            x: zoomPointX - (zoomPointX - pan.x) * zoomChange,
+            y: zoomPointY - (zoomPointY - pan.y) * zoomChange,
+          });
+        }
+
+        setZoom(newZoom);
+      }
+
+      lastPinchDistance.current = currentDistance;
       return;
     }
 
-    // 태블릿에서는 펜으로만 그리기
-    if (isTablet() && e.pointerType !== 'pen') return;
+    // 한 손가락
+    if (isPanning) {
+      e.preventDefault();
+      setPan({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y,
+      });
+      return;
+    }
+
+    if (!isDrawing) return;
 
     e.preventDefault();
 
@@ -377,9 +554,17 @@ export default function DrawingCanvas({
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    // 터치인 경우 포인터 제거
-    if (e.pointerType === 'touch') {
-      activePointers.current.delete(e.pointerId);
+    // 포인터 제거
+    activePointers.current.delete(e.pointerId);
+
+    // 핀치 줌 종료
+    if (activePointers.current.size < 2) {
+      lastPinchDistance.current = 0;
+    }
+
+    if (isPanning) {
+      setIsPanning(false);
+      return;
     }
 
     if (!isDrawing) return;
@@ -404,10 +589,8 @@ export default function DrawingCanvas({
 
   // 포인터가 캔버스를 벗어났을 때도 포인터 제거
   const handlePointerCancel = (e: React.PointerEvent) => {
-    if (e.pointerType === 'touch') {
-      activePointers.current.delete(e.pointerId);
-    }
-    if (isDrawing) {
+    activePointers.current.delete(e.pointerId);
+    if (isDrawing || isPanning) {
       cancelDrawing();
     }
   };
@@ -444,6 +627,20 @@ export default function DrawingCanvas({
     if (!confirm('모든 그림과 뱃지를 지우시겠습니까?')) return;
     setStrokes([]);
     setBadges([]);
+  };
+
+  // Zoom controls
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(MAX_ZOOM, prev + ZOOM_STEP));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(MIN_ZOOM, prev - ZOOM_STEP));
+  };
+
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   };
 
   // Add badge at position
@@ -672,7 +869,7 @@ export default function DrawingCanvas({
           )}
 
           {/* Stroke width */}
-          {tool !== 'eraser' && (
+          {tool !== 'eraser' && tool !== 'badge' && (
             <div className="flex items-center gap-1 bg-white rounded-lg px-2 py-1 shadow-sm">
               <button
                 onClick={() => {
@@ -719,6 +916,33 @@ export default function DrawingCanvas({
 
           {/* Actions */}
           <div className="flex items-center gap-1 ml-auto">
+            {/* Zoom controls */}
+            <div className="flex items-center gap-1 bg-white rounded-lg p-0.5 shadow-sm mr-2">
+              <button
+                onClick={handleZoomOut}
+                disabled={zoom <= MIN_ZOOM}
+                className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="축소"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleResetZoom}
+                className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+                title="원래 크기로"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <button
+                onClick={handleZoomIn}
+                disabled={zoom >= MAX_ZOOM}
+                className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="확대"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+            </div>
+
             <button
               onClick={handleUndo}
               disabled={strokes.length === 0 && badges.length === 0}
@@ -739,104 +963,126 @@ export default function DrawingCanvas({
         </div>
       )}
 
-      {/* Canvas with image underneath */}
+      {/* Canvas container with zoom/pan */}
       <div
         ref={containerRef}
         className="relative bg-white border border-gray-200 rounded-lg overflow-hidden"
+        style={{ touchAction: 'none' }}
       >
-        {/* Background image layer */}
-        {image && (
-          <img
-            src={imageUrl}
-            alt="악보"
+        <div
+          className="relative"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: '0 0',
+            width: dimensions.width,
+            height: dimensions.height,
+          }}
+        >
+          {/* Background image layer */}
+          {image && (
+            <img
+              src={imageUrl}
+              alt="악보"
+              tabIndex={-1}
+              draggable={false}
+              onContextMenu={(e) => e.preventDefault()}
+              className="select-none block"
+              style={{
+                width: dimensions.width,
+                height: dimensions.height,
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
+              }}
+            />
+          )}
+          {/* Drawing canvas layer (transparent, on top of image) */}
+          <canvas
+            ref={canvasRef}
+            width={dimensions.width}
+            height={dimensions.height}
             tabIndex={-1}
-            draggable={false}
-            onContextMenu={(e) => e.preventDefault()}
-            className="select-none"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerCancel}
+            onPointerCancel={handlePointerCancel}
+            className={`absolute top-0 left-0 ${readOnly ? 'touch-auto pointer-events-none' : 'touch-none'}`}
             style={{
               width: dimensions.width,
               height: dimensions.height,
-              display: 'block',
-              WebkitTouchCallout: 'none',
-              WebkitUserSelect: 'none',
+              cursor: readOnly ? 'default' : (
+                isPanning ? 'grabbing' :
+                tool === 'badge' ? 'copy' :
+                tool === 'pen' ? 'crosshair' :
+                'cell'
+              )
             }}
           />
-        )}
-        {/* Drawing canvas layer (transparent, on top of image) */}
-        <canvas
-          ref={canvasRef}
-          width={dimensions.width}
-          height={dimensions.height}
-          tabIndex={-1}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerCancel}
-          onPointerCancel={handlePointerCancel}
-          className={`absolute top-0 left-0 ${readOnly ? 'touch-auto pointer-events-none' : 'touch-none'}`}
-          style={{
-            width: dimensions.width,
-            height: dimensions.height,
-            cursor: readOnly ? 'default' : (tool === 'badge' ? 'copy' : tool === 'pen' ? 'crosshair' : 'cell')
-          }}
-        />
 
-        {/* Badge layer */}
-        {badges.map((badge) => (
-          <div
-            key={badge.id}
-            className={`absolute select-none ${!readOnly ? 'cursor-move' : ''}`}
-            style={{
-              left: badge.x * dimensions.width,
-              top: badge.y * dimensions.height,
-              transform: 'translate(-50%, -50%)',
-            }}
-            draggable={false}
-            onPointerDown={(e) => {
-              if (readOnly) return;
-              e.stopPropagation();
-
-              // 지우개 모드면 뱃지 삭제
-              if (tool === 'eraser') {
-                removeBadge(badge.id);
-                return;
-              }
-
-              // 드래그 시작
-              setDraggingBadge(badge.id);
-              const rect = containerRef.current?.getBoundingClientRect();
-              if (!rect) return;
-
-              const handleMove = (moveE: PointerEvent) => {
-                const newX = (moveE.clientX - rect.left) / dimensions.width;
-                const newY = (moveE.clientY - rect.top) / dimensions.height;
-                updateBadgePosition(badge.id,
-                  Math.max(0, Math.min(1, newX)),
-                  Math.max(0, Math.min(1, newY))
-                );
-              };
-
-              const handleUp = () => {
-                setDraggingBadge(null);
-                document.removeEventListener('pointermove', handleMove);
-                document.removeEventListener('pointerup', handleUp);
-              };
-
-              document.addEventListener('pointermove', handleMove);
-              document.addEventListener('pointerup', handleUp);
-            }}
-          >
+          {/* Badge layer */}
+          {badges.map((badge) => (
             <div
-              className="px-3 py-1.5 rounded-md text-sm font-bold text-gray-800 whitespace-nowrap shadow-sm"
+              key={badge.id}
+              className={`absolute select-none ${!readOnly ? 'cursor-move' : ''}`}
               style={{
-                backgroundColor: `${badge.color}99`, // 60% opacity hex
+                left: badge.x * dimensions.width,
+                top: badge.y * dimensions.height,
+                transform: 'translate(-50%, -50%)',
+              }}
+              draggable={false}
+              onPointerDown={(e) => {
+                if (readOnly) return;
+                e.stopPropagation();
+
+                // 지우개 모드면 뱃지 삭제
+                if (tool === 'eraser') {
+                  removeBadge(badge.id);
+                  return;
+                }
+
+                // 드래그 시작
+                setDraggingBadge(badge.id);
+                const rect = containerRef.current?.getBoundingClientRect();
+                if (!rect) return;
+
+                const handleMove = (moveE: PointerEvent) => {
+                  const newX = ((moveE.clientX - rect.left - pan.x) / zoom) / dimensions.width;
+                  const newY = ((moveE.clientY - rect.top - pan.y) / zoom) / dimensions.height;
+                  updateBadgePosition(badge.id,
+                    Math.max(0, Math.min(1, newX)),
+                    Math.max(0, Math.min(1, newY))
+                  );
+                };
+
+                const handleUp = () => {
+                  setDraggingBadge(null);
+                  document.removeEventListener('pointermove', handleMove);
+                  document.removeEventListener('pointerup', handleUp);
+                };
+
+                document.addEventListener('pointermove', handleMove);
+                document.addEventListener('pointerup', handleUp);
               }}
             >
-              {badge.label}
+              <div
+                className="px-3 py-1.5 rounded-md text-sm font-bold text-gray-800 whitespace-nowrap shadow-sm"
+                style={{
+                  backgroundColor: `${badge.color}99`, // 60% opacity hex
+                }}
+              >
+                {badge.label}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+
+      {/* Zoom/Pan 도움말 */}
+      {!readOnly && isTablet() && (
+        <div className="text-xs text-gray-500 text-center">
+          💡 Apple Pencil로 그리기 | 손가락으로 이동 | 두 손가락으로 확대/축소
+        </div>
+      )}
     </div>
   );
 }
