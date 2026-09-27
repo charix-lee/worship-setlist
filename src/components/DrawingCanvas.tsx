@@ -536,31 +536,25 @@ export default function DrawingCanvas({
       if (pinchStartDistance.current > 0 && pinchStartCenter.current && pinchLastCenter.current) {
         // 시작 거리 대비 현재 거리의 비율로 zoom 계산
         const scaleFactor = currentDistance / pinchStartDistance.current;
-        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStartZoom.current * scaleFactor));
+        let newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStartZoom.current * scaleFactor));
 
         // 원래 크기(1배)로 돌아가면 팬도 리셋
         if (newZoom === MIN_ZOOM) {
           setPan({ x: 0, y: 0 });
+          setZoom(newZoom);
           pinchLastCenter.current = currentCenter;
         } else {
-          // 핀치 시작 위치(화면 좌표)가 계속 같은 위치에 있도록 pan 조정
-          const startCenter = pinchStartCenter.current;
-          const startPan = pinchStartPan.current;
-          const startZoom = pinchStartZoom.current;
+          // 현재 상태 기준으로 줌/팬 변화 계산
+          const prevZoom = zoom;
+          const prevPan = pan;
 
-          // 시작 시 중심점의 캔버스 좌표 (정규화되지 않은 좌표)
-          const canvasX = (startCenter.x - startPan.x) / startZoom;
-          const canvasY = (startCenter.y - startPan.y) / startZoom;
+          // 이전 중심점에서의 캔버스 좌표
+          const canvasX = (pinchLastCenter.current.x - prevPan.x) / prevZoom;
+          const canvasY = (pinchLastCenter.current.y - prevPan.y) / prevZoom;
 
-          // 새로운 zoom에서 같은 캔버스 좌표가 화면의 같은 위치에 있도록 pan 계산
-          let newPanX = startCenter.x - canvasX * newZoom;
-          let newPanY = startCenter.y - canvasY * newZoom;
-
-          // 두 손가락 드래그로 팬 추가 (중심점 이동)
-          const centerDeltaX = currentCenter.x - pinchLastCenter.current.x;
-          const centerDeltaY = currentCenter.y - pinchLastCenter.current.y;
-          newPanX += centerDeltaX;
-          newPanY += centerDeltaY;
+          // 현재 중심점이 같은 캔버스 좌표를 가리키도록 팬 계산
+          let newPanX = currentCenter.x - canvasX * newZoom;
+          let newPanY = currentCenter.y - canvasY * newZoom;
 
           // 팬 범위 제한
           const maxPanX = 0;
@@ -573,11 +567,11 @@ export default function DrawingCanvas({
             y: Math.max(minPanY, Math.min(maxPanY, newPanY)),
           });
 
+          setZoom(newZoom);
+
           // 현재 중심점을 이전 중심점으로 저장
           pinchLastCenter.current = currentCenter;
         }
-
-        setZoom(newZoom);
       }
 
       return;
