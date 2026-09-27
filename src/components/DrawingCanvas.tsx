@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Highlighter, Tag, ZoomIn, ZoomOut } from 'lucide-react';
+import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Highlighter, Tag, ZoomIn } from 'lucide-react';
 
 type ToolType = 'pen' | 'highlighter' | 'eraser' | 'badge';
 type EraserMode = 'partial' | 'stroke';
@@ -395,14 +395,6 @@ export default function DrawingCanvas({
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  // 두 포인터의 중심점 계산
-  const getCenter = (p1: PointerEvent, p2: PointerEvent) => {
-    return {
-      x: (p1.clientX + p2.clientX) / 2,
-      y: (p1.clientY + p2.clientY) / 2,
-    };
-  };
-
   // Pointer event handlers
   const handlePointerDown = (e: React.PointerEvent) => {
     if (readOnly) return;
@@ -410,7 +402,7 @@ export default function DrawingCanvas({
     // 포인터 추가
     activePointers.current.set(e.pointerId, e.nativeEvent);
 
-    // 두 손가락: 핀치 줌/팬 시작
+    // 두 손가락: 핀치 줌 시작
     if (activePointers.current.size === 2) {
       cancelDrawing();
       const pointers = Array.from(activePointers.current.values());
@@ -487,7 +479,7 @@ export default function DrawingCanvas({
       activePointers.current.set(e.pointerId, e.nativeEvent);
     }
 
-    // 두 손가락: 핀치 줌
+    // 두 손가락: 핀치 줌 (확대만)
     if (activePointers.current.size === 2) {
       e.preventDefault();
       const pointers = Array.from(activePointers.current.values());
@@ -495,31 +487,18 @@ export default function DrawingCanvas({
 
       if (lastPinchDistance.current > 0) {
         const scaleFactor = currentDistance / lastPinchDistance.current;
-        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * scaleFactor));
-
-        // 줌 중심점 계산
-        const center = getCenter(pointers[0], pointers[1]);
-        const rect = canvasRef.current?.getBoundingClientRect();
-        if (rect) {
-          const zoomPointX = center.x - rect.left;
-          const zoomPointY = center.y - rect.top;
-
-          // 줌 중심을 기준으로 팬 조정
-          const zoomChange = newZoom / zoom;
-          setPan({
-            x: zoomPointX - (zoomPointX - pan.x) * zoomChange,
-            y: zoomPointY - (zoomPointY - pan.y) * zoomChange,
-          });
+        // 확대만 허용 (현재 zoom보다 작아지지 않게)
+        if (scaleFactor > 1) {
+          const newZoom = Math.min(MAX_ZOOM, zoom * scaleFactor);
+          setZoom(newZoom);
         }
-
-        setZoom(newZoom);
       }
 
       lastPinchDistance.current = currentDistance;
       return;
     }
 
-    // 한 손가락
+    // 한 손가락: 팬 중이면 팬
     if (isPanning) {
       e.preventDefault();
       setPan({
@@ -632,10 +611,6 @@ export default function DrawingCanvas({
   // Zoom controls
   const handleZoomIn = () => {
     setZoom(prev => Math.min(MAX_ZOOM, prev + ZOOM_STEP));
-  };
-
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(MIN_ZOOM, prev - ZOOM_STEP));
   };
 
   const handleResetZoom = () => {
@@ -919,16 +894,9 @@ export default function DrawingCanvas({
             {/* Zoom controls */}
             <div className="flex items-center gap-1 bg-white rounded-lg p-0.5 shadow-sm mr-2">
               <button
-                onClick={handleZoomOut}
-                disabled={zoom <= MIN_ZOOM}
-                className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
-                title="축소"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <button
                 onClick={handleResetZoom}
-                className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+                disabled={zoom === 1}
+                className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
                 title="원래 크기로"
               >
                 {Math.round(zoom * 100)}%
@@ -1080,7 +1048,7 @@ export default function DrawingCanvas({
       {/* Zoom/Pan 도움말 */}
       {!readOnly && isTablet() && (
         <div className="text-xs text-gray-500 text-center">
-          💡 Apple Pencil로 그리기 | 손가락으로 이동 | 두 손가락으로 확대/축소
+          💡 Apple Pencil로 그리기 | 손가락으로 이동 | 두 손가락으로 확대
         </div>
       )}
     </div>
