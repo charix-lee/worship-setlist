@@ -1050,7 +1050,7 @@ export default function DrawingCanvas({
       <div
         ref={containerRef}
         className="relative bg-white border border-gray-200 rounded-lg overflow-hidden"
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: readOnly ? 'auto' : 'none' }}
       >
         <div
           className="relative"
