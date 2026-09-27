@@ -67,6 +67,7 @@ const BADGE_COLORS = [
 ];
 
 // Zoom 설정
+const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.5;
 
@@ -478,7 +479,7 @@ export default function DrawingCanvas({
       activePointers.current.set(e.pointerId, e.nativeEvent);
     }
 
-    // 두 손가락: 핀치 줌 (확대만)
+    // 두 손가락: 핀치 줌 (확대/축소)
     if (activePointers.current.size === 2) {
       e.preventDefault();
       const pointers = Array.from(activePointers.current.values());
@@ -486,10 +487,12 @@ export default function DrawingCanvas({
 
       if (lastPinchDistance.current > 0) {
         const scaleFactor = currentDistance / lastPinchDistance.current;
-        // 확대만 허용 (현재 zoom보다 작아지지 않게)
-        if (scaleFactor > 1) {
-          const newZoom = Math.min(MAX_ZOOM, zoom * scaleFactor);
-          setZoom(newZoom);
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * scaleFactor));
+        setZoom(newZoom);
+
+        // 원래 크기(1배)로 돌아가면 팬도 리셋
+        if (newZoom === MIN_ZOOM) {
+          setPan({ x: 0, y: 0 });
         }
       }
 
@@ -610,11 +613,6 @@ export default function DrawingCanvas({
   // Zoom controls
   const handleZoomIn = () => {
     setZoom(prev => Math.min(MAX_ZOOM, prev + ZOOM_STEP));
-  };
-
-  const handleResetZoom = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
   };
 
   // Add badge at position
@@ -893,14 +891,6 @@ export default function DrawingCanvas({
             {/* Zoom controls */}
             <div className="flex items-center gap-1 bg-white rounded-lg p-0.5 shadow-sm mr-2">
               <button
-                onClick={handleResetZoom}
-                disabled={zoom === 1}
-                className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
-                title="원래 크기로"
-              >
-                {Math.round(zoom * 100)}%
-              </button>
-              <button
                 onClick={handleZoomIn}
                 disabled={zoom >= MAX_ZOOM}
                 className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -1047,7 +1037,7 @@ export default function DrawingCanvas({
       {/* Zoom/Pan 도움말 */}
       {!readOnly && isTablet() && (
         <div className="text-xs text-gray-500 text-center">
-          💡 Apple Pencil로 그리기 | 손가락으로 이동 | 두 손가락으로 확대
+          💡 Apple Pencil로 그리기 | 손가락으로 이동 | 두 손가락으로 확대/축소
         </div>
       )}
     </div>
