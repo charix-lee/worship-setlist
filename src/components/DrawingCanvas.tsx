@@ -404,25 +404,16 @@ export default function DrawingCanvas({
   const handlePointerDown = (e: React.PointerEvent) => {
     if (readOnly) return;
 
-    // 이전 핀치가 끝났는데 포인터가 남아있는 경우 클리어
-    if (activePointers.current.size >= 2 && pinchStartDistance.current === 0) {
-      console.log('Clearing stale pointers');
+    // 포인터 추가 전에, 핀치가 아닌데 포인터가 남아있으면 클리어
+    if (activePointers.current.size > 0 && pinchStartDistance.current === 0) {
       activePointers.current.clear();
     }
 
     // 포인터 추가
     activePointers.current.set(e.pointerId, e.nativeEvent);
 
-    console.log('PointerDown:', {
-      pointerId: e.pointerId,
-      pointerType: e.pointerType,
-      activeSize: activePointers.current.size,
-      zoom: zoom,
-    });
-
     // 두 손가락: 핀치 줌 시작
     if (activePointers.current.size === 2) {
-      console.log('Pinch zoom start');
       cancelDrawing();
       const pointers = Array.from(activePointers.current.values());
 
@@ -445,7 +436,6 @@ export default function DrawingCanvas({
 
     // 세 손가락 이상: 무시
     if (activePointers.current.size > 2) {
-      console.log('3+ fingers, ignoring');
       cancelDrawing();
       return;
     }
@@ -455,18 +445,15 @@ export default function DrawingCanvas({
     if (isTablet()) {
       if (e.pointerType === 'pen') {
         // Apple Pencil로 그리기
-        console.log('Starting drawing with pen');
         e.preventDefault();
         startDrawing(e);
       } else {
         // 손가락으로 팬
-        console.log('Starting pan with finger');
         e.preventDefault();
         startPanning(e);
       }
     } else {
       // 비태블릿: 모두 그리기
-      console.log('Starting drawing (non-tablet)');
       e.preventDefault();
       startDrawing(e);
     }
