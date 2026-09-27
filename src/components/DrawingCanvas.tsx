@@ -185,7 +185,7 @@ export default function DrawingCanvas({
   const [highlighterColor, setHighlighterColor] = useState('#FEF08A');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [highlighterWidth, setHighlighterWidth] = useState(16);
-  const [eraserMode, setEraserMode] = useState<EraserMode>('partial');
+  const [eraserMode, setEraserMode] = useState<EraserMode>('stroke');
   const [eraserWidth, setEraserWidth] = useState(20);
 
   const currentColor = tool === 'pen' ? penColor : tool === 'highlighter' ? highlighterColor : '#000000';
