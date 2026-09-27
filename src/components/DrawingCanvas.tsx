@@ -89,9 +89,6 @@ function drawSmoothStroke(
   color: string,
   baseWidth: number,
   tool: ToolType,
-  scale: number,
-  offsetX: number,
-  offsetY: number,
   canvasWidth: number,
   canvasHeight: number
 ) {
@@ -115,20 +112,20 @@ function drawSmoothStroke(
 
   // 첫 점
   const firstPoint = points[0];
-  const firstX = firstPoint.x * canvasWidth * scale + offsetX;
-  const firstY = firstPoint.y * canvasHeight * scale + offsetY;
+  const firstX = firstPoint.x * canvasWidth;
+  const firstY = firstPoint.y * canvasHeight;
 
   ctx.moveTo(firstX, firstY);
 
   if (points.length === 2) {
     // 두 점만 있으면 직선
     const secondPoint = points[1];
-    const secondX = secondPoint.x * canvasWidth * scale + offsetX;
-    const secondY = secondPoint.y * canvasHeight * scale + offsetY;
+    const secondX = secondPoint.x * canvasWidth;
+    const secondY = secondPoint.y * canvasHeight;
 
     // 필압 반영
     const avgPressure = (firstPoint.pressure + secondPoint.pressure) / 2;
-    ctx.lineWidth = baseWidth * (0.5 + avgPressure * 0.5) * scale;
+    ctx.lineWidth = baseWidth * (0.5 + avgPressure * 0.5);
 
     ctx.lineTo(secondX, secondY);
     ctx.stroke();
@@ -140,10 +137,10 @@ function drawSmoothStroke(
     const p0 = points[i];
     const p1 = points[i + 1];
 
-    const x0 = p0.x * canvasWidth * scale + offsetX;
-    const y0 = p0.y * canvasHeight * scale + offsetY;
-    const x1 = p1.x * canvasWidth * scale + offsetX;
-    const y1 = p1.y * canvasHeight * scale + offsetY;
+    const x0 = p0.x * canvasWidth;
+    const y0 = p0.y * canvasHeight;
+    const x1 = p1.x * canvasWidth;
+    const y1 = p1.y * canvasHeight;
 
     // 중간점을 control point로 사용
     const cpX = (x0 + x1) / 2;
@@ -151,17 +148,17 @@ function drawSmoothStroke(
 
     // 필압 반영
     const avgPressure = (p0.pressure + p1.pressure) / 2;
-    ctx.lineWidth = baseWidth * (0.5 + avgPressure * 0.5) * scale;
+    ctx.lineWidth = baseWidth * (0.5 + avgPressure * 0.5);
 
     ctx.quadraticCurveTo(x0, y0, cpX, cpY);
   }
 
   // 마지막 점까지 그리기
   const lastPoint = points[points.length - 1];
-  const lastX = lastPoint.x * canvasWidth * scale + offsetX;
-  const lastY = lastPoint.y * canvasHeight * scale + offsetY;
+  const lastX = lastPoint.x * canvasWidth;
+  const lastY = lastPoint.y * canvasHeight;
 
-  ctx.lineWidth = baseWidth * (0.5 + lastPoint.pressure * 0.5) * scale;
+  ctx.lineWidth = baseWidth * (0.5 + lastPoint.pressure * 0.5);
   ctx.lineTo(lastX, lastY);
   ctx.stroke();
 
@@ -321,14 +318,11 @@ export default function DrawingCanvas({
         stroke.color,
         stroke.width,
         stroke.tool,
-        zoom,
-        pan.x,
-        pan.y,
         width,
         height
       );
     }
-  }, [ctx, dimensions, strokes, currentStroke, zoom, pan]);
+  }, [ctx, dimensions, strokes, currentStroke]);
 
   useEffect(() => {
     redraw();
@@ -341,8 +335,8 @@ export default function DrawingCanvas({
       if (stroke.tool === 'eraser') continue; // Skip eraser strokes
 
       for (const p of stroke.points) {
-        const dx = (p.x - point.x) * dimensions.width * zoom;
-        const dy = (p.y - point.y) * dimensions.height * zoom;
+        const dx = (p.x - point.x) * dimensions.width;
+        const dy = (p.y - point.y) * dimensions.height;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // Check if point is within eraser radius + stroke width
@@ -352,7 +346,7 @@ export default function DrawingCanvas({
       }
     }
     return -1;
-  }, [strokes, dimensions, eraserWidth, zoom]);
+  }, [strokes, dimensions, eraserWidth]);
 
   // Remove stroke at index
   const removeStrokeAt = useCallback((index: number) => {
@@ -1016,8 +1010,13 @@ export default function DrawingCanvas({
                 if (!rect) return;
 
                 const handleMove = (moveE: PointerEvent) => {
-                  const newX = ((moveE.clientX - rect.left - pan.x) / zoom) / dimensions.width;
-                  const newY = ((moveE.clientY - rect.top - pan.y) / zoom) / dimensions.height;
+                  // transform이 적용된 div의 좌표로 변환
+                  const containerX = (moveE.clientX - rect.left - pan.x) / zoom;
+                  const containerY = (moveE.clientY - rect.top - pan.y) / zoom;
+
+                  const newX = containerX / dimensions.width;
+                  const newY = containerY / dimensions.height;
+
                   updateBadgePosition(badge.id,
                     Math.max(0, Math.min(1, newX)),
                     Math.max(0, Math.min(1, newY))
