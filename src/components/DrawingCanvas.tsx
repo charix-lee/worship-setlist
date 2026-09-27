@@ -404,11 +404,6 @@ export default function DrawingCanvas({
   const handlePointerDown = (e: React.PointerEvent) => {
     if (readOnly) return;
 
-    // 포인터 추가 전에, 핀치가 아닌데 포인터가 남아있으면 클리어
-    if (activePointers.current.size > 0 && pinchStartDistance.current === 0) {
-      activePointers.current.clear();
-    }
-
     // 포인터 추가
     activePointers.current.set(e.pointerId, e.nativeEvent);
 
@@ -462,6 +457,12 @@ export default function DrawingCanvas({
   };
 
   const startDrawing = (e: React.PointerEvent) => {
+    // activePointers가 1개만 있어야 그리기 가능
+    // 2개 이상이면 핀치 상태이므로 그리기 안함
+    if (activePointers.current.size !== 1) {
+      return;
+    }
+
     const point = getPoint(e);
     if (!point) return;
 
