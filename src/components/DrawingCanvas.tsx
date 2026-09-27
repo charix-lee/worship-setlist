@@ -212,7 +212,7 @@ export default function DrawingCanvas({
 
   // 멀티터치 감지용
   const activePointers = useRef<Map<number, PointerEvent>>(new Map());
-  const lastPinchDistance = useRef<number>(0);
+  const pinchStartDistance = useRef<number>(0);
   const pinchStartCenter = useRef<{ x: number; y: number } | null>(null);
   const pinchStartZoom = useRef<number>(1);
   const pinchStartPan = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -411,7 +411,9 @@ export default function DrawingCanvas({
     if (activePointers.current.size === 2) {
       cancelDrawing();
       const pointers = Array.from(activePointers.current.values());
-      lastPinchDistance.current = getDistance(pointers[0], pointers[1]);
+
+      // 핀치 시작 거리 저장
+      pinchStartDistance.current = getDistance(pointers[0], pointers[1]);
 
       // 핀치 시작 위치 저장 (화면 좌표)
       const center = getCenter(pointers[0], pointers[1]);
@@ -505,8 +507,9 @@ export default function DrawingCanvas({
       const pointers = Array.from(activePointers.current.values());
       const currentDistance = getDistance(pointers[0], pointers[1]);
 
-      if (lastPinchDistance.current > 0 && pinchStartCenter.current) {
-        const scaleFactor = currentDistance / lastPinchDistance.current;
+      if (pinchStartDistance.current > 0 && pinchStartCenter.current) {
+        // 시작 거리 대비 현재 거리의 비율로 zoom 계산
+        const scaleFactor = currentDistance / pinchStartDistance.current;
         const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStartZoom.current * scaleFactor));
 
         // 원래 크기(1배)로 돌아가면 팬도 리셋
@@ -541,7 +544,6 @@ export default function DrawingCanvas({
         setZoom(newZoom);
       }
 
-      lastPinchDistance.current = currentDistance;
       return;
     }
 
@@ -595,7 +597,7 @@ export default function DrawingCanvas({
 
     // 핀치 줌 종료
     if (activePointers.current.size < 2) {
-      lastPinchDistance.current = 0;
+      pinchStartDistance.current = 0;
       pinchStartCenter.current = null;
       pinchStartZoom.current = 1;
       pinchStartPan.current = { x: 0, y: 0 };
@@ -632,7 +634,7 @@ export default function DrawingCanvas({
 
     // 핀치 줌 종료
     if (activePointers.current.size < 2) {
-      lastPinchDistance.current = 0;
+      pinchStartDistance.current = 0;
       pinchStartCenter.current = null;
       pinchStartZoom.current = 1;
       pinchStartPan.current = { x: 0, y: 0 };
