@@ -467,6 +467,9 @@ export default function DrawingCanvas({
   };
 
   const startPanning = (e: React.PointerEvent) => {
+    // 기본 크기(1배)에서는 팬 비활성화
+    if (zoom === 1) return;
+
     setIsPanning(true);
     setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
@@ -503,9 +506,19 @@ export default function DrawingCanvas({
     // 한 손가락: 팬 중이면 팬
     if (isPanning) {
       e.preventDefault();
+
+      // 팬 범위 계산 (여백이 안 보이게 제한)
+      const newPanX = e.clientX - panStart.x;
+      const newPanY = e.clientY - panStart.y;
+
+      const maxPanX = 0; // 오른쪽 끝
+      const minPanX = -(dimensions.width * (zoom - 1)); // 왼쪽 끝
+      const maxPanY = 0; // 위쪽 끝
+      const minPanY = -(dimensions.height * (zoom - 1)); // 아래쪽 끝
+
       setPan({
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y,
+        x: Math.max(minPanX, Math.min(maxPanX, newPanX)),
+        y: Math.max(minPanY, Math.min(maxPanY, newPanY)),
       });
       return;
     }
