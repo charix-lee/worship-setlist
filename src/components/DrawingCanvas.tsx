@@ -215,6 +215,7 @@ export default function DrawingCanvas({
   const lastPinchDistance = useRef<number>(0);
   const pinchStartCenter = useRef<{ x: number; y: number } | null>(null);
   const pinchStartZoom = useRef<number>(1);
+  const pinchStartPan = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Check if there are unsaved changes
   const hasChanges = JSON.stringify(strokes) !== JSON.stringify(savedStrokes) ||
@@ -421,6 +422,7 @@ export default function DrawingCanvas({
           y: center.y - rect.top,
         };
         pinchStartZoom.current = zoom;
+        pinchStartPan.current = { x: pan.x, y: pan.y };
       }
       return;
     }
@@ -505,7 +507,7 @@ export default function DrawingCanvas({
 
       if (lastPinchDistance.current > 0 && pinchStartCenter.current) {
         const scaleFactor = currentDistance / lastPinchDistance.current;
-        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * scaleFactor));
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStartZoom.current * scaleFactor));
 
         // 원래 크기(1배)로 돌아가면 팬도 리셋
         if (newZoom === MIN_ZOOM) {
@@ -513,10 +515,12 @@ export default function DrawingCanvas({
         } else {
           // 핀치 시작 위치(화면 좌표)가 계속 같은 위치에 있도록 pan 조정
           const startCenter = pinchStartCenter.current;
+          const startPan = pinchStartPan.current;
+          const startZoom = pinchStartZoom.current;
 
           // 시작 시 중심점의 캔버스 좌표 (정규화되지 않은 좌표)
-          const canvasX = (startCenter.x - pan.x) / zoom;
-          const canvasY = (startCenter.y - pan.y) / zoom;
+          const canvasX = (startCenter.x - startPan.x) / startZoom;
+          const canvasY = (startCenter.y - startPan.y) / startZoom;
 
           // 새로운 zoom에서 같은 캔버스 좌표가 화면의 같은 위치에 있도록 pan 계산
           const newPanX = startCenter.x - canvasX * newZoom;
@@ -594,6 +598,7 @@ export default function DrawingCanvas({
       lastPinchDistance.current = 0;
       pinchStartCenter.current = null;
       pinchStartZoom.current = 1;
+      pinchStartPan.current = { x: 0, y: 0 };
     }
 
     if (isPanning) {
@@ -630,6 +635,7 @@ export default function DrawingCanvas({
       lastPinchDistance.current = 0;
       pinchStartCenter.current = null;
       pinchStartZoom.current = 1;
+      pinchStartPan.current = { x: 0, y: 0 };
     }
 
     if (isDrawing || isPanning) {
