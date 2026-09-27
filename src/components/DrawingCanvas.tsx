@@ -213,6 +213,8 @@ export default function DrawingCanvas({
   // 멀티터치 감지용
   const activePointers = useRef<Map<number, PointerEvent>>(new Map());
   const lastPinchDistance = useRef<number>(0);
+  const pinchStartCenter = useRef<{ x: number; y: number } | null>(null);
+  const pinchStartZoom = useRef<number>(1);
 
   // Check if there are unsaved changes
   const hasChanges = JSON.stringify(strokes) !== JSON.stringify(savedStrokes) ||
@@ -409,6 +411,17 @@ export default function DrawingCanvas({
       cancelDrawing();
       const pointers = Array.from(activePointers.current.values());
       lastPinchDistance.current = getDistance(pointers[0], pointers[1]);
+
+      // 핀치 시작 위치 저장 (화면 좌표)
+      const center = getCenter(pointers[0], pointers[1]);
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) {
+        pinchStartCenter.current = {
+          x: center.x - rect.left,
+          y: center.y - rect.top,
+        };
+        pinchStartZoom.current = zoom;
+      }
       return;
     }
 
@@ -490,41 +503,35 @@ export default function DrawingCanvas({
       const pointers = Array.from(activePointers.current.values());
       const currentDistance = getDistance(pointers[0], pointers[1]);
 
-      if (lastPinchDistance.current > 0) {
+      if (lastPinchDistance.current > 0 && pinchStartCenter.current) {
         const scaleFactor = currentDistance / lastPinchDistance.current;
         const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * scaleFactor));
 
-        // 줌 중심점 계산 (두 손가락의 중심)
-        const center = getCenter(pointers[0], pointers[1]);
-        const rect = canvasRef.current?.getBoundingClientRect();
+        // 원래 크기(1배)로 돌아가면 팬도 리셋
+        if (newZoom === MIN_ZOOM) {
+          setPan({ x: 0, y: 0 });
+        } else {
+          // 핀치 시작 위치(화면 좌표)가 계속 같은 위치에 있도록 pan 조정
+          const startCenter = pinchStartCenter.current;
 
-        if (rect) {
-          // 컨테이너 기준 중심점
-          const zoomPointX = center.x - rect.left;
-          const zoomPointY = center.y - rect.top;
+          // 시작 시 중심점의 캔버스 좌표 (정규화되지 않은 좌표)
+          const canvasX = (startCenter.x - pan.x) / zoom;
+          const canvasY = (startCenter.y - pan.y) / zoom;
 
-          // 줌 변화율
-          const zoomChange = newZoom / zoom;
+          // 새로운 zoom에서 같은 캔버스 좌표가 화면의 같은 위치에 있도록 pan 계산
+          const newPanX = startCenter.x - canvasX * newZoom;
+          const newPanY = startCenter.y - canvasY * newZoom;
 
-          // 중심점을 기준으로 팬 조정
-          const newPanX = zoomPointX - (zoomPointX - pan.x) * zoomChange;
-          const newPanY = zoomPointY - (zoomPointY - pan.y) * zoomChange;
+          // 팬 범위 제한
+          const maxPanX = 0;
+          const minPanX = -(dimensions.width * (newZoom - 1));
+          const maxPanY = 0;
+          const minPanY = -(dimensions.height * (newZoom - 1));
 
-          // 원래 크기(1배)로 돌아가면 팬도 리셋
-          if (newZoom === MIN_ZOOM) {
-            setPan({ x: 0, y: 0 });
-          } else {
-            // 팬 범위 제한
-            const maxPanX = 0;
-            const minPanX = -(dimensions.width * (newZoom - 1));
-            const maxPanY = 0;
-            const minPanY = -(dimensions.height * (newZoom - 1));
-
-            setPan({
-              x: Math.max(minPanX, Math.min(maxPanX, newPanX)),
-              y: Math.max(minPanY, Math.min(maxPanY, newPanY)),
-            });
-          }
+          setPan({
+            x: Math.max(minPanX, Math.min(maxPanX, newPanX)),
+            y: Math.max(minPanY, Math.min(maxPanY, newPanY)),
+          });
         }
 
         setZoom(newZoom);
@@ -585,6 +592,8 @@ export default function DrawingCanvas({
     // 핀치 줌 종료
     if (activePointers.current.size < 2) {
       lastPinchDistance.current = 0;
+      pinchStartCenter.current = null;
+      pinchStartZoom.current = 1;
     }
 
     if (isPanning) {
@@ -615,6 +624,14 @@ export default function DrawingCanvas({
   // 포인터가 캔버스를 벗어났을 때도 포인터 제거
   const handlePointerCancel = (e: React.PointerEvent) => {
     activePointers.current.delete(e.pointerId);
+
+    // 핀치 줌 종료
+    if (activePointers.current.size < 2) {
+      lastPinchDistance.current = 0;
+      pinchStartCenter.current = null;
+      pinchStartZoom.current = 1;
+    }
+
     if (isDrawing || isPanning) {
       cancelDrawing();
     }
