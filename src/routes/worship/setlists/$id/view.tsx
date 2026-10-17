@@ -789,35 +789,15 @@ function SetlistViewPage() {
         if (!sheet?.file_url) continue;
         if (sheet.file_url.toLowerCase().endsWith('.pdf')) continue;
 
-        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-          const image = new Image();
-          image.crossOrigin = 'anonymous';
-          image.onload = () => resolve(image);
-          image.onerror = reject;
-          image.src = sheet.file_url;
-        });
-
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) continue;
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-        if (!isLimitedView && item.annotations) {
-          ctx.drawImage(createAnnotationCanvas(item.annotations, img.width, img.height), 0, 0);
-        }
-
-        const blob = await new Promise<Blob | null>((resolve) =>
-          canvas.toBlob(resolve, 'image/jpeg', 0.9)
-        );
-        if (!blob) continue;
+        // 필기 없이 업로드된 원본 악보 그대로 공유
+        const response = await fetch(sheet.file_url);
+        const blob = await response.blob();
+        const type = blob.type.startsWith('image/') ? blob.type : 'image/png';
+        const ext = type.split('/')[1].replace('jpeg', 'jpg');
 
         files.push(
-          new File([blob], `${item.position}_${item.song.title}_${item.selected_key}.jpg`, {
-            type: 'image/jpeg',
+          new File([blob], `${item.position}_${item.song.title}_${item.selected_key}.${ext}`, {
+            type,
           })
         );
       }
