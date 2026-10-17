@@ -762,9 +762,8 @@ function SetlistViewPage() {
     if (!setlist) return '';
     const songs = setlist.setlist_items
       .map((item) => {
-        const key = item.selected_key ? ` (${item.selected_key})` : '';
         const youtube = item.song.youtube_url ? `\n${item.song.youtube_url}` : '';
-        return `${item.position}. ${item.song.title}${key}${youtube}`;
+        return `${item.position}. ${item.song.title}${youtube}`;
       })
       .join('\n\n');
     const link = `${window.location.origin}/worship/setlists/${setlist.id}/view`;
