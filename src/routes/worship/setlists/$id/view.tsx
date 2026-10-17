@@ -16,12 +16,14 @@ import {
   ChevronDown,
   FileText,
   Image as ImageIcon,
+  Send,
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import DrawingCanvas from '@/components/DrawingCanvas';
 import LyricsModal from '@/components/LyricsModal';
+import KakaoShareModal from '@/components/KakaoShareModal';
 import type { SetlistWithItems, SetlistItemWithSong } from '@/types/database';
 import { getServiceTypeColors } from '@/utils/colors';
 import toast from 'react-hot-toast';
@@ -394,6 +396,11 @@ function SetlistViewPage() {
   // 악보 내보내기
   const [exportingSheets, setExportingSheets] = useState(false);
 
+  // 카톡 공유
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareFiles, setShareFiles] = useState<File[]>([]);
+  const [preparingShare, setPreparingShare] = useState(false);
+
   // 다운로드 드롭다운
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState(false);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
@@ -751,6 +758,78 @@ function SetlistViewPage() {
     }
   };
 
+  const buildShareText = () => {
+    if (!setlist) return '';
+    const songs = setlist.setlist_items
+      .map((item) => {
+        const key = item.selected_key ? ` (${item.selected_key})` : '';
+        const youtube = item.song.youtube_url ? `\n${item.song.youtube_url}` : '';
+        return `${item.position}. ${item.song.title}${key}${youtube}`;
+      })
+      .join('\n\n');
+    const link = `${window.location.origin}/worship/setlists/${setlist.id}/view`;
+    return `[${formatDate(setlist.date)} ${setlist.service_type} 콘티]\n\n${songs}\n\n🔗 콘티 보기\n${link}`;
+  };
+
+  // 공유 버튼을 누른 순간이 아니라 모달 안의 버튼에서 navigator.share를 호출해야
+  // (사용자 제스처 유지) 사진 준비가 오래 걸려도 공유가 막히지 않음
+  const openShare = async () => {
+    if (!setlist || setlist.setlist_items.length === 0) {
+      toast.error('공유할 곡이 없습니다.');
+      return;
+    }
+
+    setShareOpen(true);
+    setShareFiles([]);
+    setPreparingShare(true);
+    try {
+      const files: File[] = [];
+      for (const item of setlist.setlist_items) {
+        const sheet = item.song.song_sheets.find((s) => s.music_key === item.selected_key);
+        if (!sheet?.file_url) continue;
+        if (sheet.file_url.toLowerCase().endsWith('.pdf')) continue;
+
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const image = new Image();
+          image.crossOrigin = 'anonymous';
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = sheet.file_url;
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        if (!isLimitedView && item.annotations) {
+          ctx.drawImage(createAnnotationCanvas(item.annotations, img.width, img.height), 0, 0);
+        }
+
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, 'image/jpeg', 0.9)
+        );
+        if (!blob) continue;
+
+        files.push(
+          new File([blob], `${item.position}_${item.song.title}_${item.selected_key}.jpg`, {
+            type: 'image/jpeg',
+          })
+        );
+      }
+      setShareFiles(files);
+    } catch (error) {
+      console.error('공유 이미지 준비 실패:', error);
+      toast.error('악보 사진을 준비하지 못했습니다.');
+    } finally {
+      setPreparingShare(false);
+    }
+  };
+
   const exportSheetsPDF = async () => {
     if (!setlist || setlist.setlist_items.length === 0) {
       toast.error('악보가 없습니다.');
@@ -919,6 +998,16 @@ function SetlistViewPage() {
                 >
                   <Copy className="w-4 h-4" />
                   <span className="hidden md:inline">곡 리스트 복사</span>
+                </button>
+              )}
+              {!isLimitedView && (
+                <button
+                  onClick={openShare}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors bg-white"
+                  title="카톡으로 보내기"
+                >
+                  <Send className="w-4 h-4" />
+                  <span className="hidden md:inline">카톡 보내기</span>
                 </button>
               )}
               {can.editSetlist && (
@@ -1165,6 +1254,14 @@ function SetlistViewPage() {
           lyrics={lyricsItem.song.lyrics || ''}
         />
       )}
+
+      <KakaoShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        text={shareOpen ? buildShareText() : ''}
+        files={shareFiles}
+        preparing={preparingShare}
+      />
 
       {/* 찬양 모드 (전체화면) */}
       {worshipMode && setlist && setlist.setlist_items.length > 0 && (
