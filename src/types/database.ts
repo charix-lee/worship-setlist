@@ -113,9 +113,13 @@ export interface Setlist {
   description: string | null;
   church_id: string | null;
   created_by: string | null;
+  status: SetlistStatus;
+  published_at: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export type SetlistStatus = 'draft' | 'published';
 
 export interface SetlistItem {
   id: string;

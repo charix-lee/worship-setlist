@@ -22,6 +22,7 @@ import { useChurches } from '@/hooks/useChurches';
 import { usePermissions } from '@/hooks/usePermissions';
 import Button from '@/components/Button';
 import Modal from '@/components/Modal';
+import PushNotificationCard from '@/components/PushNotificationCard';
 import { REGIONS, DENOMINATIONS, type Church } from '@/types/database';
 import toast from 'react-hot-toast';
 
@@ -230,6 +231,8 @@ function MyPage() {
             </div>
             <p className="mt-3 text-sm text-gray-500">클릭하여 프로필 사진 변경</p>
           </div>
+
+          <PushNotificationCard />
 
           {/* 슈퍼 관리자 메뉴 */}
           {profile?.is_super_admin && (

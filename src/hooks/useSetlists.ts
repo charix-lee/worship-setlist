@@ -144,6 +144,18 @@ export function useSetlists() {
     await fetchSetlists();
   };
 
+  // 콘티 완료 처리 + 팀원 알림 (Edge Function에서 한 번만 발송)
+  const publishSetlist = async (id: string): Promise<{ notified: number; alreadyPublished: boolean }> => {
+    const { data, error } = await supabase.functions.invoke('publish-setlist', {
+      body: { setlistId: id },
+    });
+
+    if (error) throw error;
+
+    await fetchSetlists();
+    return data;
+  };
+
   const deleteSetlist = async (id: string) => {
     const { error } = await supabase
       .from('setlists')
@@ -265,6 +277,7 @@ export function useSetlists() {
     fetchSetlistsBySongId,
     createSetlist,
     updateSetlist,
+    publishSetlist,
     deleteSetlist,
     addItemToSetlist,
     updateSetlistItem,

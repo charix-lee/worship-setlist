@@ -31,7 +31,9 @@ import {
   X,
   Save,
   PenTool,
+  CheckCircle2,
 } from 'lucide-react';
+import StatusBadge from '@/components/SetlistStatusBadge';
 import { useSetlists } from '@/hooks/useSetlists';
 import { useSongs } from '@/hooks/useSongs';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -171,6 +173,7 @@ function SetlistEditPage() {
   const {
     fetchSetlistById,
     updateSetlist,
+    publishSetlist,
     updateSetlistItem,
     removeItemFromSetlist,
     addItemToSetlist,
@@ -183,6 +186,8 @@ function SetlistEditPage() {
   const [setlist, setSetlist] = useState<SetlistWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [items, setItems] = useState<SetlistItemWithSong[]>([]);
   const [originalItems, setOriginalItems] = useState<SetlistItemWithSong[]>([]);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
@@ -293,8 +298,41 @@ function SetlistEditPage() {
     toast.success('곡이 삭제 예정되었습니다. 저장 시 적용됩니다.');
   };
 
-  const handleSave = async () => {
+  const handlePublish = async () => {
     if (!id) return;
+
+    setPublishing(true);
+    try {
+      // 저장 안 한 변경사항이 있으면 먼저 저장
+      if (hasChanges) {
+        const saved = await handleSave();
+        if (!saved) return;
+      }
+
+      const result = await publishSetlist(id);
+      const updated = await fetchSetlistById(id);
+      if (updated) setSetlist(updated);
+
+      if (result.alreadyPublished) {
+        toast.success('이미 완료된 콘티입니다.');
+      } else {
+        toast.success(
+          result.notified > 0
+            ? `콘티를 완료하고 ${result.notified}명에게 알렸습니다.`
+            : '콘티를 완료했습니다. (알림을 켠 팀원이 아직 없어요)'
+        );
+      }
+      setPublishModalOpen(false);
+    } catch (error) {
+      console.error('콘티 완료 실패:', error);
+      toast.error('콘티 완료 처리에 실패했습니다.');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleSave = async (): Promise<boolean> => {
+    if (!id) return false;
 
     setSaving(true);
     try {
@@ -351,9 +389,11 @@ function SetlistEditPage() {
       }
 
       toast.success('저장되었습니다.');
+      return true;
     } catch (error) {
       toast.error('저장 실패');
       console.error('저장 실패:', error);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -447,6 +487,7 @@ function SetlistEditPage() {
                 <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
               </button>
               <h1 className="text-[20px] sm:text-[24px] lg:text-[28px] font-bold text-gray-900">콘티 편집</h1>
+              <StatusBadge status={setlist.status} />
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <Button
@@ -457,9 +498,24 @@ function SetlistEditPage() {
                 <span className="hidden sm:inline">송폼</span>
                 <span className="sm:hidden">송폼</span>
               </Button>
-              <Button onClick={handleSave} loading={saving} disabled={!hasChanges} icon={<Save className="w-4 h-4" />}>
+              <Button
+                variant={setlist.status === 'draft' ? 'secondary' : 'primary'}
+                onClick={handleSave}
+                loading={saving}
+                disabled={!hasChanges}
+                icon={<Save className="w-4 h-4" />}
+              >
                 저장
               </Button>
+              {setlist.status === 'draft' && (
+                <Button
+                  onClick={() => setPublishModalOpen(true)}
+                  disabled={items.length === 0}
+                  icon={<CheckCircle2 className="w-4 h-4" />}
+                >
+                  완료
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -552,6 +608,27 @@ function SetlistEditPage() {
           </div>
         </div>
       </div>
+
+      {/* Publish Confirm Modal */}
+      <Modal isOpen={publishModalOpen} onClose={() => !publishing && setPublishModalOpen(false)} title="콘티 완료">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">
+            <span className="font-semibold">{dayjs(date).format('M월 D일 (ddd)')} {serviceType}</span> 콘티를 완료할까요?
+          </p>
+          <p className="text-sm text-gray-500">
+            알림을 켠 팀원들에게 "콘티가 올라왔어요" 알림이 한 번 전송됩니다.
+            {hasChanges && ' 저장하지 않은 변경사항도 함께 저장됩니다.'}
+          </p>
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" fullWidth onClick={() => setPublishModalOpen(false)} disabled={publishing}>
+              취소
+            </Button>
+            <Button fullWidth onClick={handlePublish} loading={publishing}>
+              완료하고 알리기
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Song Modal */}
       <Modal isOpen={addModalOpen} onClose={() => { setAddModalOpen(false); setSearchQuery(''); }} title="곡 추가" size="lg">

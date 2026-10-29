@@ -17,6 +17,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import Modal from '@/components/Modal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import Button from '@/components/Button';
+import PushNotificationCard from '@/components/PushNotificationCard';
+import SetlistStatusBadge from '@/components/SetlistStatusBadge';
 import { SERVICE_TYPES } from '@/types/database';
 import { getServiceTypeColors } from '@/utils/colors';
 import toast from 'react-hot-toast';
@@ -117,6 +119,8 @@ function SetlistsPage() {
         )}
       </div>
 
+      <PushNotificationCard variant="banner" />
+
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
@@ -165,6 +169,7 @@ function SetlistsPage() {
                             >
                               {setlist.service_type}
                             </span>
+                            <SetlistStatusBadge status={setlist.status} />
                           </div>
                           {setlist.description && (
                             <p className="text-sm text-gray-500 truncate mb-1">{setlist.description}</p>
