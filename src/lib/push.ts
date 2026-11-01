@@ -1,6 +1,10 @@
 import { supabase } from './supabase';
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+// 웹 푸시 공개 키 (공개용이라 코드에 넣어도 안전함, 비공개 키는 Supabase 시크릿에만 있음)
+// 환경 변수가 있으면 그 값을 우선 사용
+const DEFAULT_VAPID_PUBLIC_KEY =
+  'BJxQ3XMiaHGGN4BFciCU5bmZPiH9HEX0J9GmF9yyc8RnsbZYHcIpYc3dEVByiyBaLX-0ebUThkTJreIYBOu1Qcg';
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY;
 
 export type PushState =
   | 'unsupported' // 브라우저가 지원 안 함
