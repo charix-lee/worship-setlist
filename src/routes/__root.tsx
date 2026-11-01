@@ -4,6 +4,7 @@ import { Music, Library, ListMusic, LogOut, Menu, X, ChevronDown, Users, User, C
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
+import PullToRefresh from '@/components/PullToRefresh';
 import toast from 'react-hot-toast';
 
 export const Route = createRootRoute({
@@ -59,6 +60,7 @@ function RootComponent() {
       <div className={showKakaoBanner ? 'pt-[52px]' : ''}>
         <LayoutWrapper />
       </div>
+      <PullToRefresh />
       <Toaster
         position="top-center"
         toastOptions={{
