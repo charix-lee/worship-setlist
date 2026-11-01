@@ -89,7 +89,7 @@ export interface Song {
   youtube_url: string | null;
   lyrics: string | null; // 가사 텍스트 (방송팀용)
   memo: string | null;
-  original_key: string | null; // 직접 지정한 원키 (없으면 첫 번째 악보 키)
+  original_key: string | null; // 기본 악보의 키 (없으면 첫 번째 악보)
   church_id: string | null;
   created_by: string | null;
   created_at: string;

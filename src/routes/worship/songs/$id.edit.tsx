@@ -12,7 +12,7 @@ import {
 import { useSongs } from '@/hooks/useSongs';
 import Button from '@/components/Button';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
-import OriginalKeySelect from '@/components/OriginalKeySelect';
+import DefaultSheetSelect from '@/components/DefaultSheetSelect';
 import type { SongWithSheets } from '@/types/database';
 import { MUSIC_KEYS } from '@/types/database';
 import toast from 'react-hot-toast';
@@ -36,7 +36,7 @@ function EditSongPage() {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [memo, setMemo] = useState('');
-  const [originalKeyInput, setOriginalKeyInput] = useState(''); // 빈 값 = 자동
+  const [defaultSheetKey, setDefaultSheetKey] = useState(''); // 빈 값 = 첫 번째 악보
 
   // New sheet form states
   const [showAddSheet, setShowAddSheet] = useState(false);
@@ -77,7 +77,7 @@ function EditSongPage() {
         setYoutubeUrl(data.youtube_url || '');
         setLyrics(data.lyrics || '');
         setMemo(data.memo || '');
-        setOriginalKeyInput(data.original_key || '');
+        setDefaultSheetKey(data.original_key || '');
       } else {
         toast.error('곡을 찾을 수 없습니다.');
         navigate({ to: '/worship/songs' });
@@ -111,7 +111,8 @@ function EditSongPage() {
         youtube_url: youtubeUrl.trim() || undefined,
         lyrics: lyrics.trim() || undefined,
         memo: memo.trim() || undefined,
-        original_key: originalKeyInput || null,
+        // 기본 악보로 고른 키 (삭제된 악보면 비움)
+        original_key: song.song_sheets.some((s) => s.music_key === defaultSheetKey) ? defaultSheetKey : null,
       });
       toast.success('저장되었습니다!');
       navigate({ to: '/worship/songs/$id/view', params: { id: song.id } });
@@ -198,7 +199,6 @@ function EditSongPage() {
 
   if (!song) return null;
 
-  const firstSheetKey = song.song_sheets[0]?.music_key ?? null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -282,13 +282,14 @@ function EditSongPage() {
               {/* Original Key */}
               <div>
                 <label className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-gray-700 mb-1.5">
-                  원키 (Original Key)
+                  기본 악보
                 </label>
-                <OriginalKeySelect
-                  value={originalKeyInput}
-                  onChange={setOriginalKeyInput}
-                  autoKey={firstSheetKey}
+                <DefaultSheetSelect
+                  value={defaultSheetKey}
+                  onChange={setDefaultSheetKey}
+                  sheetKeys={song.song_sheets.map((s) => s.music_key)}
                 />
+                <p className="mt-1 text-[11px] sm:text-xs text-gray-500">콘티에 이 곡을 넣을 때 기본으로 선택돼요</p>
               </div>
 
               {/* YouTube URL */}

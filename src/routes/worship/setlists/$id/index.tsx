@@ -42,7 +42,7 @@ import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '@/types/database';
 import { MUSIC_KEYS } from '@/types/database';
-import { getOriginalKey } from '@/lib/songKey';
+import { getDefaultSheetKey } from '@/lib/songKey';
 import toast from 'react-hot-toast';
 
 dayjs.locale('ko');
@@ -406,11 +406,8 @@ function SetlistEditPage() {
 
     try {
       const position = items.length + 1;
-      // 원키 악보가 있으면 그 키, 없으면 첫 번째 악보 키
-      const originalKey = getOriginalKey(song);
-      const defaultKey = song.song_sheets.some((s) => s.music_key === originalKey)
-        ? originalKey ?? undefined
-        : song.song_sheets[0]?.music_key;
+      // 곡의 기본 악보 키 (없으면 첫 번째 악보)
+      const defaultKey = getDefaultSheetKey(song) ?? undefined;
 
       await addItemToSetlist(id, song.id, position, defaultKey);
 

@@ -17,7 +17,7 @@ import {
 import { useSongs } from '@/hooks/useSongs';
 import { useSetlists } from '@/hooks/useSetlists';
 import Button from '@/components/Button';
-import { getOriginalKey } from '@/lib/songKey';
+import { getDefaultSheetKey } from '@/lib/songKey';
 import type { SongWithSheets, Setlist } from '@/types/database';
 import toast from 'react-hot-toast';
 
@@ -112,8 +112,8 @@ function SongViewPage() {
 
   if (!song) return null;
 
-  // 직접 지정한 원키, 없으면 첫 번째 악보의 키
-  const originalKey = getOriginalKey(song);
+  // 기본 악보 키 (콘티에 넣을 때 기본 선택)
+  const defaultKey = getDefaultSheetKey(song);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -124,9 +124,9 @@ function SongViewPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h1 className="text-[22px] sm:text-[24px] lg:text-[28px] font-bold text-gray-900 break-words">{song.title}</h1>
-              {originalKey && (
+              {defaultKey && (
                 <div className="bg-primary-50 px-2 py-0.5 rounded flex-shrink-0">
-                  <span className="text-[10px] sm:text-[11px] font-semibold text-primary-600">Original: {originalKey}</span>
+                  <span className="text-[10px] sm:text-[11px] font-semibold text-primary-600">기본 악보: {defaultKey}</span>
                 </div>
               )}
             </div>
@@ -214,7 +214,12 @@ function SongViewPage() {
                               <Music2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-sm sm:text-base text-gray-900 truncate">{sheet.music_key} 악보</p>
+                              <p className="font-bold text-sm sm:text-base text-gray-900 truncate flex items-center gap-1.5">
+                                {sheet.music_key} 악보
+                                {song.song_sheets.length > 1 && sheet.music_key === defaultKey && (
+                                  <span className="text-[10px] sm:text-[11px] font-semibold text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded">기본</span>
+                                )}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
