@@ -17,6 +17,7 @@ export const mockSongs: SongWithSheets[] = [
 오직 주님만 높이며
 영원토록 찬양합니다`,
     memo: '느리게 시작해서 점점 빌드업',
+    original_key: null,
     church_id: null,
     created_by: null,
     created_at: '2024-01-01T00:00:00Z',
@@ -57,6 +58,7 @@ export const mockSongs: SongWithSheets[] = [
 예수 그리스도의 은혜
 내 평생에 찬양해`,
     memo: null,
+    original_key: null,
     church_id: null,
     created_by: null,
     created_at: '2024-01-02T00:00:00Z',
@@ -94,6 +96,7 @@ export const mockSongs: SongWithSheets[] = [
 나의 예수 나의 모든 것
 주님께 드립니다`,
     memo: '간주 때 싱어 솔로',
+    original_key: null,
     church_id: null,
     created_by: null,
     created_at: '2024-01-03T00:00:00Z',
@@ -135,6 +138,7 @@ export const mockSongs: SongWithSheets[] = [
 주 예수를 믿고서
 어서 가자 저 천국`,
     memo: null,
+    original_key: null,
     church_id: null,
     created_by: null,
     created_at: '2024-01-04T00:00:00Z',
@@ -158,6 +162,7 @@ I worship You
 내 모든 것 다 바쳐
 찬양합니다`,
     memo: '영어 버전과 한글 버전 번갈아 부르기',
+    original_key: null,
     church_id: null,
     created_by: null,
     created_at: '2024-01-05T00:00:00Z',

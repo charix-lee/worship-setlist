@@ -103,6 +103,7 @@ export function useSongs() {
     youtube_url?: string;
     lyrics?: string;
     memo?: string;
+    original_key?: string | null;
   }): Promise<SongWithSheets> => {
     if (!profile?.church_id) {
       throw new Error('교회 정보가 없습니다. 온보딩을 완료해주세요.');
@@ -116,6 +117,7 @@ export function useSongs() {
         youtube_url: songData.youtube_url || null,
         lyrics: songData.lyrics || null,
         memo: songData.memo || null,
+        original_key: songData.original_key || null,
         church_id: profile.church_id,
       })
       .select()
@@ -140,6 +142,7 @@ export function useSongs() {
       youtube_url?: string;
       lyrics?: string;
       memo?: string;
+      original_key?: string | null;
     }
   ) => {
     const { error } = await supabase
@@ -150,6 +153,7 @@ export function useSongs() {
         youtube_url: songData.youtube_url,
         lyrics: songData.lyrics,
         memo: songData.memo,
+        original_key: songData.original_key,
       })
       .eq('id', id);
 

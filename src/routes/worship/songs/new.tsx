@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useSongs } from '@/hooks/useSongs';
 import Button from '@/components/Button';
+import OriginalKeySelect from '@/components/OriginalKeySelect';
 import { MUSIC_KEYS } from '@/types/database';
 import toast from 'react-hot-toast';
 
@@ -38,6 +39,7 @@ function NewSongPage() {
   // Form states
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
+  const [originalKeyInput, setOriginalKeyInput] = useState(''); // 빈 값 = 자동
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [memo, setMemo] = useState('');
@@ -76,6 +78,7 @@ function NewSongPage() {
         youtube_url: youtubeUrl.trim() || undefined,
         lyrics: lyrics.trim() || undefined,
         memo: memo.trim() || undefined,
+        original_key: originalKeyInput || null,
       });
 
       // 2. 악보 파일 업로드
@@ -122,7 +125,7 @@ function NewSongPage() {
     toast.success('악보가 제거되었습니다.');
   };
 
-  const originalKey = sheetFiles.length > 0 ? sheetFiles[0].key : null;
+  const firstSheetKey = sheetFiles.length > 0 ? sheetFiles[0].key : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -206,10 +209,11 @@ function NewSongPage() {
                 <label className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-gray-700 mb-1.5">
                   원키 (Original Key)
                 </label>
-                <div className="w-full h-10 sm:h-11 px-3 flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50">
-                  <span className="text-sm text-gray-900">{originalKey || 'N/A'}</span>
-                  <span className="text-[11px] sm:text-xs text-gray-500">(첫 번째 악보 키)</span>
-                </div>
+                <OriginalKeySelect
+                  value={originalKeyInput}
+                  onChange={setOriginalKeyInput}
+                  autoKey={firstSheetKey}
+                />
               </div>
 
               {/* YouTube URL */}

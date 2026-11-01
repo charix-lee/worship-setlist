@@ -17,6 +17,7 @@ import {
 import { useSongs } from '@/hooks/useSongs';
 import { useSetlists } from '@/hooks/useSetlists';
 import Button from '@/components/Button';
+import { getOriginalKey } from '@/lib/songKey';
 import type { SongWithSheets, Setlist } from '@/types/database';
 import toast from 'react-hot-toast';
 
@@ -111,8 +112,8 @@ function SongViewPage() {
 
   if (!song) return null;
 
-  // 첫 번째 악보의 키를 Original Key로 표시
-  const originalKey = song.song_sheets.length > 0 ? song.song_sheets[0].music_key : null;
+  // 직접 지정한 원키, 없으면 첫 번째 악보의 키
+  const originalKey = getOriginalKey(song);
 
   return (
     <div className="min-h-screen bg-gray-50">
