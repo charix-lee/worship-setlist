@@ -2,7 +2,8 @@ import { Outlet, createRootRoute, Link, useNavigate, useMatchRoute, useLocation 
 import { Toaster } from 'react-hot-toast';
 import { Music, Library, ListMusic, LogOut, Menu, X, ChevronDown, Users, User, CalendarDays, Loader2, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import BottomNavigation from '@/components/BottomNavigation';
 import PullToRefresh from '@/components/PullToRefresh';
 import toast from 'react-hot-toast';

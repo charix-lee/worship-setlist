@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Church, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';

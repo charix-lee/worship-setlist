@@ -37,7 +37,7 @@ import StatusBadge from '@/components/SetlistStatusBadge';
 import { useSetlists } from '@/hooks/useSetlists';
 import { useSongs } from '@/hooks/useSongs';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import type { SetlistWithItems, SetlistItemWithSong, SongWithSheets } from '@/types/database';
@@ -420,7 +420,7 @@ function SetlistEditPage() {
       toast.success(`"${song.title}"이(가) 추가되었습니다.`);
       setAddModalOpen(false);
       setSearchQuery('');
-    } catch (error) {
+    } catch {
       toast.error('추가 실패');
     } finally {
       setAdding(null);

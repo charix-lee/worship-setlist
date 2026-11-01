@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, uploadSheetFile, deleteSheetFile } from '../lib/supabase';
 import type { SongWithSheets, SongSheet } from '../types/database';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/auth';
 
 export function useSongs() {
   const { profile } = useAuth();
@@ -279,8 +279,9 @@ export function useSongs() {
 
     if (usedInSetlists && usedInSetlists.length > 0) {
       const setlistInfo = usedInSetlists
-        .map((item: any) => {
-          const setlist = item.setlists;
+        .map((item) => {
+          // 다대일 관계라 실제로는 배열이 아닌 객체 하나가 옴
+          const setlist = item.setlists as unknown as { date: string; service_type: string } | null;
           if (setlist) {
             const date = new Date(setlist.date).toLocaleDateString('ko-KR');
             return `${date} ${setlist.service_type}`;

@@ -17,7 +17,7 @@ import {
   Shield,
   Crown,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { useChurches } from '@/hooks/useChurches';
 import { usePermissions } from '@/hooks/usePermissions';
 import Button from '@/components/Button';

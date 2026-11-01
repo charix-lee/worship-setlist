@@ -1,6 +1,6 @@
 // TODO: 나중에 로그인 기능 활성화 시 아래 주석 해제
 // import { Navigate } from 'react-router-dom';
-// import { useAuth } from '../contexts/AuthContext';
+// import { useAuth } from '../contexts/auth';
 // import { Loader2 } from 'lucide-react';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {

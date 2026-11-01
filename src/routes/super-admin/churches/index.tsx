@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { Shield, Loader2, Building2, Users, ArrowLeft, Crown } from 'lucide-react';
 import { useChurches } from '@/hooks/useChurches';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 

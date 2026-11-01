@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Setlist, SetlistWithItems, SetlistWithCreator } from '../types/database';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/auth';
 
 export function useSetlists() {
   const { profile } = useAuth();

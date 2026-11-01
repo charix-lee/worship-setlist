@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useSetlists } from '@/hooks/useSetlists';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import DrawingCanvas from '@/components/DrawingCanvas';
 import LyricsModal from '@/components/LyricsModal';
 import KakaoShareModal from '@/components/KakaoShareModal';

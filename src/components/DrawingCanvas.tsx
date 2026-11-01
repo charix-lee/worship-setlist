@@ -1,4 +1,4 @@
-import { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useEffectEvent, useLayoutEffect, useState, useCallback } from 'react';
 import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Highlighter, Tag, ZoomIn } from 'lucide-react';
 
 type ToolType = 'pen' | 'highlighter' | 'eraser' | 'badge';
@@ -229,11 +229,28 @@ export default function DrawingCanvas({
   const hasChanges = JSON.stringify(strokes) !== JSON.stringify(savedStrokes) ||
                      JSON.stringify(badges) !== JSON.stringify(savedBadges);
 
+  // Save to database
+  const handleSave = async () => {
+    if (!onSave || !hasChanges) return;
+
+    try {
+      // 새 형식으로 저장 (strokes + badges)
+      await onSave(JSON.stringify({ strokes, badges }));
+      setSavedStrokes(strokes);
+      setSavedBadges(badges);
+    } catch (error) {
+      console.error('Save failed:', error);
+    }
+  };
+
   // Auto-save when exiting edit mode (readOnly becomes true)
-  useEffect(() => {
-    if (readOnly && hasChanges && onSave) {
+  const saveOnExitEdit = useEffectEvent(() => {
+    if (hasChanges && onSave) {
       handleSave();
     }
+  });
+  useEffect(() => {
+    if (readOnly) saveOnExitEdit();
   }, [readOnly]);
 
   // Load existing annotations
@@ -291,6 +308,8 @@ export default function DrawingCanvas({
     const height = image.height * scale;
 
     setDimensions({ width, height });
+    // 기존 동작 유지: 리렌더 때 컨테이너 폭이 달라져 있으면 다시 계산
+    // eslint-disable-next-line react-hooks/refs
   }, [image, containerRef.current?.clientWidth]);
 
   // 레티나 화면에서 선이 흐리지 않도록 실제 픽셀 밀도로 그림
@@ -581,7 +600,7 @@ export default function DrawingCanvas({
       if (pinchStartDistance.current > 0 && pinchStartCenter.current && pinchLastCenter.current) {
         // 시작 거리 대비 현재 거리의 비율로 zoom 계산
         const scaleFactor = currentDistance / pinchStartDistance.current;
-        let newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStartZoom.current * scaleFactor));
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStartZoom.current * scaleFactor));
 
         // 원래 크기(1배)로 돌아가면 팬도 리셋
         if (newZoom === MIN_ZOOM) {
@@ -598,8 +617,8 @@ export default function DrawingCanvas({
           const canvasY = (pinchLastCenter.current.y - prevPan.y) / prevZoom;
 
           // 현재 중심점이 같은 캔버스 좌표를 가리키도록 팬 계산
-          let newPanX = currentCenter.x - canvasX * newZoom;
-          let newPanY = currentCenter.y - canvasY * newZoom;
+          const newPanX = currentCenter.x - canvasX * newZoom;
+          const newPanY = currentCenter.y - canvasY * newZoom;
 
           // 팬 범위 제한
           const maxPanX = 0;
@@ -744,20 +763,6 @@ export default function DrawingCanvas({
 
     if (isDrawingRef.current || isPanning) {
       cancelDrawing();
-    }
-  };
-
-  // Save to database
-  const handleSave = async () => {
-    if (!onSave || !hasChanges) return;
-
-    try {
-      // 새 형식으로 저장 (strokes + badges)
-      await onSave(JSON.stringify({ strokes, badges }));
-      setSavedStrokes(strokes);
-      setSavedBadges(badges);
-    } catch (error) {
-      console.error('Save failed:', error);
     }
   };
 

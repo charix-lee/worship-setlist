@@ -1,4 +1,4 @@
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/auth';
 import { hasPermission, hasAnyPermission, hasAllPermissions, can, isAdmin } from '../lib/permissions';
 import type { Permission } from '../types/database';
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
 import { Shield, Loader2, Users, ArrowLeft, Building2, Crown } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { useChurches } from '@/hooks/useChurches';
 import { supabase } from '@/lib/supabase';
 import { getRoleName } from '@/lib/permissions';

@@ -116,7 +116,7 @@ function EditSongPage() {
       });
       toast.success('저장되었습니다!');
       navigate({ to: '/worship/songs/$id/view', params: { id: song.id } });
-    } catch (error) {
+    } catch {
       toast.error('저장 실패');
     } finally {
       setSaving(false);
@@ -135,8 +135,8 @@ function EditSongPage() {
       const updated = await fetchSongById(song.id);
       if (updated) setSong(updated);
       toast.success('악보가 삭제되었습니다.');
-    } catch (error: any) {
-      const errorMessage = error?.message || '';
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '';
 
       // 사용 중인 악보인 경우
       if (errorMessage.startsWith('SHEET_IN_USE:')) {

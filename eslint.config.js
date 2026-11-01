@@ -18,5 +18,16 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // 마운트 시 데이터 불러오기, 열릴 때 폼 초기화 같은 패턴이 많아 경고로만 표시
+      'react-hooks/set-state-in-effect': 'warn',
+    },
+  },
+  {
+    // TanStack Router 라우트 파일은 `Route`를 내보내고, HMR은 라우터 플러그인이 처리
+    files: ['src/routes/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
   },
 ])

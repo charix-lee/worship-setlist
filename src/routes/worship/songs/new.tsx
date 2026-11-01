@@ -90,7 +90,7 @@ function NewSongPage() {
 
       toast.success('곡이 등록되었습니다!');
       navigate({ to: '/worship/songs/$id/view', params: { id: result.id } });
-    } catch (error) {
+    } catch {
       toast.error('저장 실패');
     } finally {
       setSaving(false);
