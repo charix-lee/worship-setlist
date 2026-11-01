@@ -163,6 +163,31 @@ INSERT INTO setlists (title, date, service_type, description) VALUES
 ('2024-01-07 주일 1부', '2024-01-07', '주일 1부', '신년 첫 예배');
 ```
 
+## 7. 푸시 알림 설정 (콘티 등록 + 예배 하루 전)
+
+1. **DB 변경 적용**: SQL Editor에서 `supabase/migrations/007_setlist_publish_and_push.sql`, `008_setlist_reminder.sql` 순서로 실행
+   - 008 실행 전에 Database → Extensions에서 `pg_cron`, `pg_net`이 켜져 있어야 합니다.
+2. **VAPID 키 만들기** (한 번만): `npx web-push generate-vapid-keys`
+3. **Edge Function 시크릿 설정**
+   ```bash
+   supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:you@example.com CRON_SECRET=<아무 긴 랜덤 문자열>
+   ```
+4. **Vault에 cron용 값 넣기** (SQL Editor, 한 번만)
+   ```sql
+   select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
+   select vault.create_secret('<CRON_SECRET과 같은 값>', 'cron_secret');
+   ```
+5. **Edge Function 배포**
+   ```bash
+   supabase functions deploy publish-setlist
+   supabase functions deploy setlist-reminder --no-verify-jwt
+   ```
+6. **Vercel 환경 변수**에 `VITE_VAPID_PUBLIC_KEY` (3번의 공개 키와 같은 값) 추가 후 다시 배포
+
+알림 시점
+- 콘티 편집 화면에서 **완료**를 누르면 같은 교회 팀원에게 "콘티가 올라왔어요" 알림
+- 예배 **하루 전 저녁 8시**에 완료된 콘티를 팀원 모두에게 한 번 더 알림 (예배 날짜를 바꾸면 다시 보냄)
+
 ## 완료 체크리스트
 
 - [ ] Supabase 프로젝트 생성

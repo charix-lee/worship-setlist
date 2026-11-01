@@ -5,6 +5,7 @@ import { CalendarDays, ChevronRight, Library, ListMusic, Music, Clock, MapPin } 
 import { useSetlists } from '@/hooks/useSetlists';
 import { useSchedules } from '@/hooks/useSchedules';
 import { useMemo } from 'react';
+import PushNotificationCard from '@/components/PushNotificationCard';
 
 dayjs.locale('ko');
 
@@ -65,6 +66,8 @@ function MyChurchPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="px-4 py-4 space-y-6">
+        <PushNotificationCard variant="banner" />
+
 
         {/* 이번 주 주일 콘티 */}
         <section>

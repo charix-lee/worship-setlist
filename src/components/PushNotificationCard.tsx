@@ -7,9 +7,9 @@ import Button from './Button';
 const DISMISS_KEY = 'push-banner-dismissed';
 
 /**
- * 콘티 완료 알림 설정.
+ * 콘티 알림 설정 (콘티 등록 + 예배 하루 전).
  * - variant="section": 마이페이지 안의 한 구역 (항상 보임)
- * - variant="banner": 목록 상단 안내 (구독 안 했을 때만, 닫으면 다시 안 보임)
+ * - variant="banner": 우리 교회 메인 상단 안내 (구독 안 했을 때만, 닫으면 다시 안 보임)
  */
 export default function PushNotificationCard({ variant = 'section' }: { variant?: 'section' | 'banner' }) {
   const [state, setState] = useState<PushState | null>(null);
@@ -68,10 +68,11 @@ export default function PushNotificationCard({ variant = 'section' }: { variant?
     if (dismissed || state === 'subscribed' || state === 'unsupported' || state === 'denied') return null;
 
     return (
-      <div className="mb-4 flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 p-3 sm:p-4">
+      <div className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 p-3 sm:p-4">
         <Bell className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary-600" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-gray-900">콘티가 올라오면 알림을 받아보세요</p>
+          <p className="text-sm font-medium text-gray-900">콘티 알림을 받아보세요</p>
+          <p className="mt-0.5 text-xs text-gray-600">콘티가 올라올 때, 그리고 예배 하루 전에 알려드려요.</p>
           {state === 'ios-needs-install' ? (
             <p className="mt-0.5 text-xs text-gray-600">
               Safari 하단 <Share className="inline h-3.5 w-3.5 align-text-bottom" /> 공유 →
@@ -104,8 +105,8 @@ export default function PushNotificationCard({ variant = 'section' }: { variant?
           <div className="min-w-0">
             <h3 className="font-semibold text-gray-900">콘티 알림</h3>
             <p className="text-sm text-gray-600">
-              {state === 'subscribed' && '이 기기에서 콘티 완료 알림을 받고 있어요'}
-              {state === 'not-subscribed' && '콘티가 완료되면 이 기기로 알려드려요'}
+              {state === 'subscribed' && '콘티 등록 · 예배 하루 전 알림을 이 기기로 받고 있어요'}
+              {state === 'not-subscribed' && '콘티가 올라올 때와 예배 하루 전에 알려드려요'}
               {state === 'denied' && '알림이 차단되어 있어요. 브라우저/기기 설정에서 허용해주세요'}
               {state === 'ios-needs-install' && 'Safari 공유 → "홈 화면에 추가" 후 앱에서 켤 수 있어요'}
               {state === 'unsupported' && '이 브라우저는 알림을 지원하지 않아요'}
@@ -113,12 +114,12 @@ export default function PushNotificationCard({ variant = 'section' }: { variant?
           </div>
         </div>
         {state === 'subscribed' && (
-          <Button variant="secondary" size="sm" onClick={handleUnsubscribe} loading={busy}>
+          <Button variant="secondary" size="sm" className="flex-shrink-0 whitespace-nowrap" onClick={handleUnsubscribe} loading={busy}>
             끄기
           </Button>
         )}
         {state === 'not-subscribed' && (
-          <Button size="sm" onClick={handleSubscribe} loading={busy}>
+          <Button size="sm" className="flex-shrink-0 whitespace-nowrap" onClick={handleSubscribe} loading={busy}>
             켜기
           </Button>
         )}

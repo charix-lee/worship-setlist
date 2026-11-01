@@ -17,7 +17,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import Modal from '@/components/Modal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import Button from '@/components/Button';
-import PushNotificationCard from '@/components/PushNotificationCard';
 import SetlistStatusBadge from '@/components/SetlistStatusBadge';
 import { SERVICE_TYPES } from '@/types/database';
 import { getServiceTypeColors } from '@/utils/colors';
@@ -118,8 +117,6 @@ function SetlistsPage() {
           </Button>
         )}
       </div>
-
-      <PushNotificationCard variant="banner" />
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
