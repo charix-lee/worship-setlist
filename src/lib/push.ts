@@ -23,6 +23,15 @@ export function isStandalone() {
     (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
+export function isMobile() {
+  return isIOS() || /Android/i.test(navigator.userAgent);
+}
+
+/** 모바일에서 홈 화면에 추가한 앱으로 열었는지 */
+export function isInstalledMobileApp() {
+  return isMobile() && isStandalone();
+}
+
 function hasPushApi() {
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 }

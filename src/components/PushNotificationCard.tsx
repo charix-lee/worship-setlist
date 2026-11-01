@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bell, BellOff, Share, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getPushState, subscribePush, unsubscribePush, type PushState } from '@/lib/push';
+import { getPushState, isInstalledMobileApp, subscribePush, unsubscribePush, type PushState } from '@/lib/push';
 import Button from './Button';
 
 const DISMISS_KEY = 'push-banner-dismissed';
@@ -9,7 +9,7 @@ const DISMISS_KEY = 'push-banner-dismissed';
 /**
  * 콘티 알림 설정 (콘티 등록 + 예배 하루 전).
  * - variant="section": 마이페이지 안의 한 구역 (항상 보임)
- * - variant="banner": 우리 교회 메인 상단 안내 (구독 안 했을 때만, 닫으면 다시 안 보임)
+ * - variant="banner": 우리 교회 메인 상단 안내 (모바일 홈 화면 앱에서만) (구독 안 했을 때만, 닫으면 다시 안 보임)
  */
 export default function PushNotificationCard({ variant = 'section' }: { variant?: 'section' | 'banner' }) {
   const [state, setState] = useState<PushState | null>(null);
@@ -65,6 +65,7 @@ export default function PushNotificationCard({ variant = 'section' }: { variant?
   if (state === null) return null;
 
   if (variant === 'banner') {
+    if (!isInstalledMobileApp()) return null;
     if (dismissed || state === 'subscribed' || state === 'unsupported' || state === 'denied') return null;
 
     return (
