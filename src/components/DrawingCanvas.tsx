@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import { Pencil, Eraser, Undo2, Trash2, Minus, Plus, Highlighter, Tag, ZoomIn } from 'lucide-react';
 
 type ToolType = 'pen' | 'highlighter' | 'eraser' | 'badge';
@@ -94,6 +94,8 @@ function drawSmoothStroke(
 ) {
   if (points.length < 2) return;
 
+  // 지우개/형광펜 설정이 다음 그리기에 새지 않도록 상태 저장 후 복원
+  ctx.save();
   ctx.beginPath();
 
   if (tool === 'eraser') {
@@ -129,6 +131,7 @@ function drawSmoothStroke(
 
     ctx.lineTo(secondX, secondY);
     ctx.stroke();
+    ctx.restore();
     return;
   }
 
@@ -161,9 +164,7 @@ function drawSmoothStroke(
   ctx.lineWidth = baseWidth * (0.5 + lastPoint.pressure * 0.5);
   ctx.lineTo(lastX, lastY);
   ctx.stroke();
-
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
 }
 
 export default function DrawingCanvas({
@@ -179,7 +180,6 @@ export default function DrawingCanvas({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   // Drawing state
-  const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<ToolType>('pen');
   const [penColor, setPenColor] = useState('#F4A9A9');
   const [highlighterColor, setHighlighterColor] = useState('#FEF08A');
@@ -192,7 +192,14 @@ export default function DrawingCanvas({
   const currentWidth = tool === 'eraser' ? eraserWidth : tool === 'highlighter' ? highlighterWidth : strokeWidth;
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [savedStrokes, setSavedStrokes] = useState<Stroke[]>([]);
-  const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
+
+  // 그리는 중인 획은 React 상태 대신 ref에 모음 (점마다 리렌더 방지)
+  const currentStrokeRef = useRef<Stroke | null>(null);
+  const predictedPointsRef = useRef<Point[]>([]);
+  const isDrawingRef = useRef(false);
+  // 완성된 획을 미리 그려두는 오프스크린 캔버스
+  const cacheCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   // Badge state
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -286,6 +293,9 @@ export default function DrawingCanvas({
     setDimensions({ width, height });
   }, [image, containerRef.current?.clientWidth]);
 
+  // 레티나 화면에서 선이 흐리지 않도록 실제 픽셀 밀도로 그림
+  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 3) : 1;
+
   // Set up canvas context
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -294,43 +304,74 @@ export default function DrawingCanvas({
       desynchronized: true, // 성능 향상
     });
     if (context) {
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.lineCap = 'round';
       context.lineJoin = 'round';
       setCtx(context);
     }
-  }, [dimensions]);
+  }, [dimensions, dpr]);
 
-  // Redraw canvas (drawings only, not the image)
-  const redraw = useCallback(() => {
-    if (!ctx || !canvasRef.current) return;
-
+  // 화면 그리기: 캐시된 완성 획 + 지금 그리는 획만 그림
+  const renderFrame = useCallback(() => {
+    if (!ctx) return;
     const { width, height } = dimensions;
     if (width === 0 || height === 0) return;
 
-    // Clear canvas (transparent background)
     ctx.clearRect(0, 0, width, height);
-
-    // Draw all strokes
-    const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
-
-    for (const stroke of allStrokes) {
-      if (stroke.points.length < 1) continue;
-
-      drawSmoothStroke(
-        ctx,
-        stroke.points,
-        stroke.color,
-        stroke.width,
-        stroke.tool,
-        width,
-        height
-      );
+    if (cacheCanvasRef.current) {
+      ctx.drawImage(cacheCanvasRef.current, 0, 0, width, height);
     }
-  }, [ctx, dimensions, strokes, currentStroke]);
 
+    const stroke = currentStrokeRef.current;
+    if (stroke) {
+      const points = predictedPointsRef.current.length
+        ? stroke.points.concat(predictedPointsRef.current)
+        : stroke.points;
+      drawSmoothStroke(ctx, points, stroke.color, stroke.width, stroke.tool, width, height);
+    }
+  }, [ctx, dimensions]);
+
+  const renderFrameRef = useRef(renderFrame);
+  useLayoutEffect(() => {
+    renderFrameRef.current = renderFrame;
+  }, [renderFrame]);
+
+  // 한 프레임에 한 번만 그리도록 묶음
+  const scheduleRender = useCallback(() => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      renderFrameRef.current();
+    });
+  }, []);
+
+  useEffect(() => () => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  // 완성된 획이 바뀔 때만 캐시를 다시 그림
   useEffect(() => {
-    redraw();
-  }, [redraw]);
+    const { width, height } = dimensions;
+    if (width === 0 || height === 0) return;
+
+    const cache = document.createElement('canvas');
+    cache.width = Math.round(width * dpr);
+    cache.height = Math.round(height * dpr);
+    const cacheCtx = cache.getContext('2d');
+    if (!cacheCtx) return;
+    cacheCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cacheCtx.lineCap = 'round';
+    cacheCtx.lineJoin = 'round';
+    cacheCtx.clearRect(0, 0, width, height);
+
+    for (const stroke of strokes) {
+      if (stroke.points.length < 1) continue;
+      drawSmoothStroke(cacheCtx, stroke.points, stroke.color, stroke.width, stroke.tool, width, height);
+    }
+
+    cacheCanvasRef.current = cache;
+    renderFrame();
+  }, [strokes, dimensions, dpr, renderFrame]);
 
   // Find stroke that intersects with given point (for stroke eraser)
   const findIntersectingStrokeIndex = useCallback((point: { x: number; y: number }) => {
@@ -360,7 +401,7 @@ export default function DrawingCanvas({
   }, [strokes.length]);
 
   // Get point from event (normalized coordinates)
-  const getPoint = (e: React.PointerEvent): Point | null => {
+  const getPoint = (e: { clientX: number; clientY: number; pressure: number }): Point | null => {
     if (!containerRef.current) return null;
     const rect = containerRef.current.getBoundingClientRect();
 
@@ -386,10 +427,12 @@ export default function DrawingCanvas({
 
   // 멀티터치 시 그리기 취소
   const cancelDrawing = useCallback(() => {
-    setCurrentStroke(null);
-    setIsDrawing(false);
+    currentStrokeRef.current = null;
+    predictedPointsRef.current = [];
+    isDrawingRef.current = false;
     setIsPanning(false);
-  }, []);
+    scheduleRender();
+  }, [scheduleRender]);
 
   // 두 포인터 사이의 거리 계산
   const getDistance = (p1: PointerEvent, p2: PointerEvent): number => {
@@ -488,17 +531,19 @@ export default function DrawingCanvas({
       if (strokeIndex >= 0) {
         removeStrokeAt(strokeIndex);
       }
-      setIsDrawing(true);
+      isDrawingRef.current = true;
       return;
     }
 
-    setIsDrawing(true);
-    setCurrentStroke({
+    isDrawingRef.current = true;
+    predictedPointsRef.current = [];
+    currentStrokeRef.current = {
       points: [point],
       color: currentColor,
       width: currentWidth,
       tool: tool as 'pen' | 'highlighter' | 'eraser',
-    });
+    };
+    scheduleRender();
   };
 
   const startPanning = (e: React.PointerEvent) => {
@@ -597,15 +642,14 @@ export default function DrawingCanvas({
       return;
     }
 
-    if (!isDrawing) return;
+    if (!isDrawingRef.current) return;
 
     e.preventDefault();
 
-    const point = getPoint(e);
-    if (!point) return;
-
     // 획 지우기 모드 - 드래그하면서 여러 획 삭제 가능
     if (tool === 'eraser' && eraserMode === 'stroke') {
+      const point = getPoint(e);
+      if (!point) return;
       const strokeIndex = findIntersectingStrokeIndex(point);
       if (strokeIndex >= 0) {
         removeStrokeAt(strokeIndex);
@@ -613,12 +657,35 @@ export default function DrawingCanvas({
       return;
     }
 
-    if (!currentStroke) return;
+    const stroke = currentStrokeRef.current;
+    if (!stroke) return;
 
-    setCurrentStroke({
-      ...currentStroke,
-      points: [...currentStroke.points, point],
-    });
+    // 프레임 사이에 들어온 중간 점까지 모두 받기 (애플펜슬은 화면 갱신보다 자주 보냄)
+    const native = e.nativeEvent;
+    const coalesced = native.getCoalescedEvents?.() ?? [];
+    const events = coalesced.length > 0 ? coalesced : [native];
+
+    // 너무 촘촘한 점은 건너뛰어 저장 용량을 줄임 (화면 기준 0.5px 미만)
+    const minDist = 0.5 / zoom;
+    for (const ev of events) {
+      const point = getPoint(ev);
+      if (!point) continue;
+      const last = stroke.points[stroke.points.length - 1];
+      if (last) {
+        const dx = (point.x - last.x) * dimensions.width;
+        const dy = (point.y - last.y) * dimensions.height;
+        if (dx * dx + dy * dy < minDist * minDist) continue;
+      }
+      stroke.points.push(point);
+    }
+
+    // 펜 끝 예측 점 (화면에만 그리고 저장하지 않음)
+    const predicted = native.getPredictedEvents?.() ?? [];
+    predictedPointsRef.current = predicted
+      .map((ev) => getPoint(ev))
+      .filter((p): p is Point => p !== null);
+
+    scheduleRender();
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
@@ -639,24 +706,27 @@ export default function DrawingCanvas({
       return;
     }
 
-    if (!isDrawing) return;
+    if (!isDrawingRef.current) return;
     e.preventDefault();
 
     // 획 지우기 모드는 currentStroke 없이 동작
     if (tool === 'eraser' && eraserMode === 'stroke') {
-      setIsDrawing(false);
+      isDrawingRef.current = false;
       return;
     }
 
-    if (!currentStroke) return;
+    const stroke = currentStrokeRef.current;
+    currentStrokeRef.current = null;
+    predictedPointsRef.current = [];
+    isDrawingRef.current = false;
+    if (!stroke) return;
 
     // Only save strokes with multiple points
-    if (currentStroke.points.length >= 2) {
-      setStrokes(prev => [...prev, currentStroke]);
+    if (stroke.points.length >= 2) {
+      setStrokes(prev => [...prev, stroke]);
+    } else {
+      scheduleRender();
     }
-
-    setCurrentStroke(null);
-    setIsDrawing(false);
   };
 
   // 포인터가 캔버스를 벗어났을 때도 포인터 제거
@@ -672,7 +742,7 @@ export default function DrawingCanvas({
       pinchStartPan.current = { x: 0, y: 0 };
     }
 
-    if (isDrawing || isPanning) {
+    if (isDrawingRef.current || isPanning) {
       cancelDrawing();
     }
   };
@@ -1081,8 +1151,8 @@ export default function DrawingCanvas({
           {/* Drawing canvas layer (transparent, on top of image) */}
           <canvas
             ref={canvasRef}
-            width={dimensions.width}
-            height={dimensions.height}
+            width={Math.round(dimensions.width * dpr)}
+            height={Math.round(dimensions.height * dpr)}
             tabIndex={-1}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
