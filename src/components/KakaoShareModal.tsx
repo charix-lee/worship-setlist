@@ -1,4 +1,5 @@
-import { Copy, Download, Loader2, Send } from 'lucide-react';
+import { useState } from 'react';
+import { Copy, Download, Loader2, RotateCcw, Send } from 'lucide-react';
 import Modal from './Modal';
 import toast from 'react-hot-toast';
 
@@ -17,6 +18,16 @@ export default function KakaoShareModal({
   files,
   preparing,
 }: KakaoShareModalProps) {
+  // 복사/공유 전에 텍스트를 직접 수정할 수 있도록 편집 상태로 관리
+  // draft가 null이면 수정 전 상태(원본 text 표시). 모달을 열고 닫을 때 초기화
+  const [draft, setDraft] = useState<string | null>(null);
+  const [prevOpen, setPrevOpen] = useState(isOpen);
+  if (isOpen !== prevOpen) {
+    setPrevOpen(isOpen);
+    setDraft(null);
+  }
+  const editedText = draft ?? text;
+
   // 파일 공유 지원 여부 (모바일 Safari/Chrome 등)
   const canShareFiles =
     typeof navigator !== 'undefined' &&
@@ -26,7 +37,7 @@ export default function KakaoShareModal({
 
   const copyText = async (silent = false) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(editedText);
       if (!silent) toast.success('콘티 리스트가 복사되었습니다!');
     } catch {
       if (!silent) toast.error('복사 실패');
@@ -39,9 +50,9 @@ export default function KakaoShareModal({
 
     try {
       if (canShareFiles) {
-        await navigator.share({ files, text });
+        await navigator.share({ files, text: editedText });
       } else if (navigator.share) {
-        await navigator.share({ text });
+        await navigator.share({ text: editedText });
       } else {
         toast.success('콘티 리스트가 복사되었습니다! 카톡방에 붙여넣기 해주세요.');
         return;
@@ -72,9 +83,26 @@ export default function KakaoShareModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="카톡으로 보내기" size="lg">
       <div className="space-y-4">
-        <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-[13px] text-gray-800 whitespace-pre-wrap break-all font-sans max-h-[40vh] overflow-y-auto">
-          {text}
-        </pre>
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[12px] text-gray-500">내용을 수정한 뒤 복사하거나 공유할 수 있어요</span>
+            {editedText !== text && (
+              <button
+                onClick={() => setDraft(null)}
+                className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-gray-700"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                원래대로
+              </button>
+            )}
+          </div>
+          <textarea
+            value={editedText}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={12}
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg p-4 text-[13px] text-gray-800 font-sans h-[40vh] resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white"
+          />
+        </div>
 
         <div className="flex items-center gap-2 text-[13px] text-gray-500">
           {preparing ? (
